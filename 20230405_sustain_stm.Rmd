@@ -1,0 +1,322 @@
+---
+title: "Identifying sustainability dimensions of corporate reports by directed topic analysis"
+author: "Maria Osipenko"
+date: '2023-03-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Idea
+
+-	Topic analysis represents each document in a collection of documents in a low dimensional latent topic space
+
+- Supervised and unsupervised approaches are possible. 
+
+- Due to limitations of supervised techniques (costs for labeling, subjectivity) we use an unsupervised methodology for embedding in a low dimensional space.
+
+- However, sometimes the latent space is prestructured by e.g. policy maker as some sort of regulation requirement, on which the documents are matched. 
+
+- We model the later given structure by stratifying to match the occurrences of terms with a  specific keyword collection from the regulatory texts. In the case of sustainability reports - 17 sustainability goals.
+
+- As a result, a low dimensional representation of phrases in the report sentences and the sentences themselves stratified by the defined sustainability goals is obtained.
+
+- Use data from @kang2022
+
+For a comprehensive review of text mining in finance literature, we refer to @gupta2020.
+
+@Harandizadeh2022 proposes to use word2vec embeddings combined with LDA and vocabulary priors to obtain interpretable word embeddings.
+@eshima2023 embedd prespecified keywords in LDA for the same reason. In the same spirit, @watanabe2022 use seeded LDA with a carefuly chosen seeded vocabulary to assist in classifying documents in specific categories. With their approaches, the authors embedd additional information in topic extraction.
+
+The draw back of the mentioned approaches in @watanabe2022 and @eshima2023 lies in the need of manual intervention for keyword or vocabulary specification. @Harandizadeh2022 uses word vectors from a pretrained general purpose word2vec model and thus, it is not clear, whether their model works for specific domains as sustainability reports.
+
+Another way to consider such additional information are matrix co-factorization techniques, which are especially popular in recommended systems. Co-factorization techniques factorize two or three matrices with some common cofactors simultaneously. For instance, @fang2011 consider user communities information and @luo2019 incorporate tagging and time stamp of ratings in their personalized recommendations via matrix co-factorization. The approach is transparent and easily adjustable. By introducing a nuisance parameter which allows to move focus between error minimization of individual factorization terms, additional flexibility is ensured.
+
+For this reasons, we follow the later approach and propose to use matrix co-factorization for embedding additional information from sustainable goals definition into topics extraction from corporate reports.
+
+## Model
+
+We assume that the corporate reports texts share a common topic structure with the sustainability goals definition but also contain some other topics concerning e.g. financial statements. Moreover, we anticipate that the goals are written very focused using concrete sparse vocabulary, whereas the reports may refer to the same concepts using other wordings. That is, a common topic may contain words that are semantically relevant to sustainability goals vocabulary but not directly mentioned in the texts of the SDGs.
+That is, we assume, that both text corpora share a common low dimensional subspace, in which they can be compared to each other by means of some distance measure.
+
+To account for the mentioned issues, we define the following model for terms-document matrices arising from reports  and sustainability goals texts.
+
+\[M = U^\top V + E\]
+
+and 
+
+\[C = {U_{1:k}}^\top Q + F\]
+
+where $U_{1:k}$ is a matrix which contains only the first $k$ rows of $U$ and
+
+- $M$ is the term-document matrix for the corporate reports with dimensions $(p\times n)$, where $p$ is the joint vocabulary (words and phrases with two co-occurring words) obtained from both reports and sustainability goals texts. $n$ is the number of corporate reports contexts, where the later represents one page of a corporate report. The overall dimensions for $M$ for our data are $(18'086\times 6'891)$.
+- $C$ is the term-document matrix for the sustainability goals with dimensions $(p\times m)$, where $p$ is again the joint vocabulary (words and phrases with two co-occurring words) obtained from both reports and sustainability goals texts. $m$ is the number of sustainability goals contexts, where each context represents each of the $17$ goals. The overall dimensions for $C$ for our data are $(18'086\times 17)$.
+- $U$ is the word-topic representation matrix of dimensions $(p\times k+\tilde k)$, where $k$ is the number of common topics and $\tilde k$ is the number of report specific topics.
+- $V$ is the context-topic representation matrix for the reports of dimensions $(k+\tilde k\times n)$.
+- $Q$ is the context-topic representation matrix for sustainability goals of dimensions $(k\times m)$.
+- $E$ and $F$ are matrices of error terms of dimensions $(p\times n)$ and $(p\times m)$ respectively.
+
+The associated topic extraction problem is then:
+
+\[\min(||M - U^\top V||^2 + \lambda ||C-U_0^\top Q||^2)\]
+
+where $\lambda$ adapts the importance of the loss on the second factorization term.
+
+Because of the non-negativity of the entries in $M$ and $C$ it makes sense to restrict at least $U$ to be non-negative. This enhances the interpretability and sparsity of the resulting topics **(see cite)**.
+
+The value of $\lambda$ balances out the combined loss function. It is responsible for adjusting the impact of accuracy concerning reports versus SDGs. Since the second dimension of $C$ is much lower than that of $M$, the first part of the loss will dominate the co-factorization. To give more weight to the second part one can alternate $\lambda$.
+
+In summary, with the resulting low dimensional representation of corporate reports together with SDGs, we create a basis for choosing, evaluating and monitoring investments with respect to their impact on society and the environment.
+
+## Simulation
+
+```{r}
+
+```
+
+
+## Data 
+
+https://github.com/llbtl/paper_ssm01/tree/main/data
+
+```{r}
+rm(list=ls())
+```
+
+
+
+```{r}
+# files<-list.files("data_pdf/reports",full.names = T)
+# 
+# contents<-paragraphs<-data.frame()
+# 
+# for (f in 1:length(files)){
+#     #print(files[f])
+#     content<-Rpoppler::PDF_text(files[f])
+#     contents<-rbind(contents, data.frame(text=content,firm=rep(files[f],length(content))))
+#     paragraph<-unlist(strsplit(content, "\n[0-9]"))#too long
+#     paragraph<-paragraph[nchar(paragraph)>300]
+#     paragraphs<-rbind(paragraphs, data.frame(text=paragraph,firm=rep(files[f],length(paragraph))))
+# }
+# 
+# preproc_content<-function(contents,thr=300){
+#   contents<-contents[nchar(as.character(contents[,1]))>thr,]
+#   contents[,1]<-gsub(pattern="\n[0-9]",replacement=" ",x=as.character(contents[,1]))
+#   contents[,1]<-gsub(pattern="-\n",replacement="",x=as.character(contents[,1]))
+#   contents[,1]<-gsub(pattern="\n",replacement=" ",x=as.character(contents[,1]))
+#   return(contents)
+# }
+# 
+# contents<-preproc_content(contents)
+# paragraphs<-preproc_content(paragraphs)
+# 
+
+
+
+```
+
+
+```{r}
+# data<-contents
+# data$text<-as.character(data$text)
+# save(data, file="data_sustain.RData")
+# 
+# data<-paragraphs
+# data$text<-as.character(data$text)
+# save(data, file="data_sustain_paragr.RData")
+```
+
+```{r}
+#load("data_sustain_paragr.RData")
+load("data_sustain.RData")
+```
+
+
+## Data
+
+Use R-Package Quanteda (Benoit K, Watanabe K, Wang H, Nulty P, Obeng A, Müller S, Matsuo A (2018). “quanteda: An R package for the quantitative analysis of textual data.” Journal of Open Source Software, 3(30), 774. doi: 10.21105/joss.00774, https://quanteda.io.) to set up a corpus, to split in tokens, and compute the relative frequencies.
+
+corporate reports
+
+```{r, warnings=F, message=FALSE}
+library(quanteda)
+data$id<-1:nrow(data)
+mycorpus<-corpus(data, docid_field="id",text_field="text")
+print(paste("Number of docs is",ndoc(mycorpus)))
+#tokenize
+tk<-tokenizers::tokenize_word_stems(data[,1], stopwords = c(stopwords::stopwords("en"),"toyota", "walmart","nestle","basf","ikea","ms","m&s",2011:2020))
+tk<-tokens(as.tokens(tk), remove_punct=TRUE, remove_numbers = TRUE, remove_symbols = TRUE,remove_url = TRUE, remove_separators = TRUE, split_hyphens=T)
+
+#tk<-tokenizers::tokenize_skip_ngrams(data[,1], n = 3, n_min = 2, k = 2,stopwords = c(stopwords::stopwords("en"),"toyota", "walmart","nestle","basf","ikea","ms","m&s"))
+#remove stopwords
+#tk<-tokens_select(tk, pattern = stopwords('english'),case_insensitive = TRUE, selection='remove', min_nchar=3)
+#tk<-tokens_remove(tk,c("toyota", "walmart","nestle","basf","ikea","ms","m&s"), valuetype="fixed")
+#tk<-tokens_remove(as.tokens(tk), "[[:digit:]]")
+tk2<-tokens_ngrams(as.tokens(tk),n=1:2,skip=2)
+#dfm
+mydfm<-dfm(tk2, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+#keep only terms with more than two chars
+mydfm<-dfm_select(mydfm,pattern=c("[[:digit:]]","toyota", "walmart","nestle","basf","ikea","ms","m&s","per", "wal", "mart","www.sdgcompass.org","e.g"), 
+                  valuetype="regex",selection="remove",min_nchar = 3)
+mydfm<-dfm_select(mydfm,pattern=stopwords::stopwords("en"),valuetype="fixed",selection="remove")
+#keep only words with frequency >=10
+mydfm<-dfm_trim(mydfm, min_docfreq = 0.005, max_docfreq=0.5,docfreq_type="prop")
+#take relative frequencies as entries
+#mydfm_w<-dfm_weight(mydfm, scheme = "prop")
+mydfm
+topfeatures(mydfm)
+```
+
+sustainability goals (https://www.un.org/sustainabledevelopment/)
+
+```{r}
+# files<-list.files("data_pdf/SDGs",full.names = T,recursive = T)
+# 
+# contents<-data.frame()
+# 
+# for (f in 1:length(files)){
+#     #print(files[f])
+#     content<-Rpoppler::PDF_text(files[f])
+#     contents<-rbind(contents, data.frame(text=content,firm=rep(files[f],length(content))))
+# }
+# contents<-contents[nchar(as.character(contents[,1]))>300,]
+# contents[,1]<-gsub(pattern="\n[0-9]",replacement=" ",x=as.character(contents[,1]))
+# contents[,1]<-gsub(pattern="-\n",replacement="",x=as.character(contents[,1]))
+# contents[,1]<-gsub(pattern="\n",replacement=" ",x=as.character(contents[,1]))
+```
+
+```{r}
+# goals<-contents
+# #goals$text<-as.character(data$text)
+# save(goals, file="goals_sustain.RData")
+```
+
+```{r}
+load("goals_sustain.RData")
+```
+
+
+```{r, warnings=F, message=FALSE}
+library(quanteda)
+goals$id<-1:nrow(goals)
+mycorpus<-corpus(goals, docid_field="id",text_field="text")
+print(paste("Number of docs is",ndoc(mycorpus)))
+#tokenize
+tkk<-tokenizers::tokenize_word_stems(goals[,1], stopwords = c(stopwords::stopwords("en")))
+tkk<-tokens(as.tokens(tkk), remove_punct=TRUE, remove_numbers = TRUE, remove_symbols = TRUE,remove_url = TRUE, remove_separators = TRUE, split_hyphens=T)
+
+#tk<-tokenizers::tokenize_skip_ngrams(data[,1], n = 3, n_min = 2, k = 2,stopwords = c(stopwords::stopwords("en"),"toyota", "walmart","nestle","basf","ikea","ms","m&s"))
+#remove stopwords
+#tk<-tokens_select(tk, pattern = stopwords('english'),case_insensitive = TRUE, selection='remove', min_nchar=3)
+#tk<-tokens_remove(tk,c("toyota", "walmart","nestle","basf","ikea","ms","m&s"), valuetype="fixed")
+#tk<-tokens_remove(as.tokens(tk), "[[:digit:]]")
+tk22<-tokens_ngrams(as.tokens(tkk),n=1:2,skip=2)
+#dfm
+mydfm2<-dfm(tk22, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+#keep only terms with more than two chars
+mydfm2<-dfm_select(mydfm2,pattern=c("[[:digit:]]","toyota", "walmart","nestle","basf","ikea","ms","m&s","per", "wal", "mart","www.sdgcompass.org","e.g"), 
+                   valuetype="regex",selection="remove",min_nchar = 3)
+mydfm2<-dfm_select(mydfm2,pattern=stopwords::stopwords("en"),valuetype="fixed",selection="remove")
+#keep only words with frequency >=2
+mydfm2<-dfm_trim(mydfm2, min_docfreq = 0.01, max_docfreq=0.5,docfreq_type="prop")
+#take relative frequencies as entries
+#mydfm_w<-dfm_weight(mydfm, scheme = "prop")
+mydfm2
+
+mydfm2<-dfm_group(mydfm2,goals$firm)
+```
+
+## stm model
+
+https://bookdown.org/joone/ComputationalMethods/topicmodeling.html
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(stm)
+```
+
+```{r}
+stm_dfm <- convert(mydfm, to = "stm")
+str(stm_dfm, max.level = 1)
+```
+```{r}
+first_model <- stm(documents = stm_dfm$documents,
+                   vocab = stm_dfm$vocab,
+                   K = 10,
+                   verbose = TRUE)
+```
+
+
+```{r}
+plot(first_model)
+```
+
+```{r}
+semanticCoherence(first_model, stm_dfm$documents)
+```
+
+```{r}
+tibble(
+  topic = 1:10,
+  exclusivity = exclusivity(first_model),
+  semantic_coherence = semanticCoherence(first_model, stm_dfm$documents)
+  ) %>% 
+  ggplot(aes(semantic_coherence, exclusivity, label = topic)) +
+  geom_point() +
+  geom_text(nudge_y = .01) +
+  theme_bw()
+```
+
+```{r}
+terms<-labelTopics(first_model)
+terms
+```
+
+```{r}
+doc_probs <- tidy(first_model, matrix = "gamma")
+doc_probs
+```
+
+
+```{r}
+doc_probs %>% 
+  group_by(document) %>% 
+  summarise(sum_gamma = sum(gamma))
+```
+
+```{r}
+top_terms <- tibble(topic = terms$topicnums,
+                    prob = apply(terms$prob, 1, paste, collapse = ", "),
+                    frex = apply(terms$frex, 1, paste, collapse = ", "))
+
+gamma_by_topic <- doc_probs %>% 
+  group_by(topic) %>%
+  summarise(gamma = mean(gamma)) %>%
+  arrange(desc(gamma)) %>%
+  left_join(top_terms, by = "topic") %>%
+  mutate(topic = paste0("Topic ", topic),
+         topic = reorder(topic, gamma))
+
+gamma_by_topic 
+
+```
+
+```{r}
+data$date<-substr(data$firm,nchar(as.character(data$firm))-7,nchar(as.character(data$firm))-4)
+doc_data<-doc_probs %>% 
+  left_join(data, by = c("document" = "id")) %>% 
+  group_by(topic, date) %>% 
+  summarise(n = n(),
+            gamma = mean(gamma), 
+            .groups = "drop") 
+plot(doc_data$date[doc_data$topic==1],doc_data$gamma[doc_data$topic==1],type="l",ylim=c(0,0.3))
+for(i in 2:7){
+  lines(doc_data$date[doc_data$topic==i],doc_data$gamma[doc_data$topic==i],col=i)
+}
+legend("topright",col=1:7,lwd=1,legend=1:7)
+```
+
+
