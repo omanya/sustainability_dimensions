@@ -582,8 +582,8 @@ for( i in 1:nrow(U)){
 
 ```{r}
 ind<-TRUE
-lam=400#225
-out<-compute_proj(M=what, C=what2,K=10,Kt=0,lam=lam) # K=9, lam=200
+lam=300#225
+out<-compute_proj(M=what, C=what2,K=8,Kt=0,lam=lam) # K=9, lam=200
 #out$losses[1]/(out$losses[2]*lam)
 (out$losses[1]/prod(dim(what)))/(out$losses[2]/prod(dim(what2)))
 #out$props
@@ -692,7 +692,7 @@ diag(tcm2)<-diag(tcm2)+smooth
 compute coherence
 
 ```{r}
-coh<-coh2<-matrix(NA,length(Ks), length(lams))
+coh<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
 for (k in 1:length(Ks)){
   for(l in 1:length(lams)){
     print(c(k,l))
@@ -706,6 +706,9 @@ for (k in 1:length(Ks)){
     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
     cohi<-apply(cohi,1,mean)
     coh[k,l]<-mean(cohi)
+    mse[k,l]<-(outt$losses[1]/prod(dim(what)))+(outt$losses[2]/prod(dim(what2)))
+    prop[k,l]<-outt$props[1]
+    prop2[k,l]<-outt$props[2]
   }
 }
 # cohm<-(coh+coh2)
@@ -718,9 +721,18 @@ for (k in 1:length(Ks)){
 # apply((coh2),1,mean)
 # lams[6]
 #cohs<-list(coh=coh, coh2=coh2)
+cohs<-list(coh=coh,mse=mse,prop=prop,prop2=prop2)
+save(coh, file="cohs.RData")
 
-save(coh, file="coh.RData")
+mse
+which(mse==min(mse),arr.ind = T)
 
+popp<-matrix(0,dim(prop)[1],dim(prop)[2])
+pthr<-c(0.12,0.5)
+popp[prop>pthr[1]&prop2>pthr[2]]<-(prop2/prop)[prop>pthr[1]&prop2>pthr[2]]
+popp
+prop+prop2
+lams[13]
 ```
 
 
@@ -729,17 +741,6 @@ save(coh, file="coh.RData")
 coh
 which(coh==max(coh),arr.ind = T)
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -761,27 +762,39 @@ predict_proj<-function(K,M, C, lam,fold){
 ## Choose $k$ by cross validation on SDGs data
 
 ```{r}
-Ks<-seq(3,10)
+Ks<-seq(5,10)
 set.seed(1)
-indgr0<-which(ppmii2>0, arr.ind=T); indgr0<-indgr0[sample.int(nrow(indgr0),replace=F),]
+#folds for reports
+indgr0<-which(what>0, arr.ind=T); indgr0<-indgr0[sample.int(nrow(indgr0),replace=F),]
 nfolds<-10
 folds<-c(seq(1,nrow(indgr0),floor(nrow(indgr0)/nfolds)+1),nrow(indgr0))
-err<-NULL
-errs<-list()
+#folds for goals
+indgr02<-which(what>0, arr.ind=T); indgr02<-indgr02[sample.int(nrow(indgr02),replace=F),]
+nfolds<-10
+folds2<-c(seq(1,nrow(indgr02),floor(nrow(indgr02)/nfolds)+1),nrow(indgr02))
+
+err<-err2<-NULL
+errs<-errs2<-list()
 for(i in 1:length(Ks)){
   for(j in 1:nfolds){
     print(paste("fold=",j))
-    M_fold<-ppmii[-indgr0[folds[j]:(folds[j+1]-1),][,1],]
-    out<-compute_proj0(M=M_fold, K=Ks[i])
+    
+    M_fold<-what[-indgr0[folds[j]:(folds[j+1]-1),][,1],]
+    C_fold<-what2[-indgr02[folds2[j]:(folds2[j+1]-1),][,1],]
+    out<-compute_proj(M=M_fold, C=C_fold, K=Ks[i],Kt=0,lam=lams[l])
     V=out$V
-    M_fold<-ppmii[,-indgr0[folds[j]:(folds[j+1]-1),][,2]]
-    out<-compute_proj0(M=M_fold, K=Ks[i])
+    Q=out$Q
+    M_fold<-what[,-indgr0[folds[j]:(folds[j+1]-1),][,2]]
+    C_fold<-what2[,-indgr02[folds2[j]:(folds2[j+1]-1),][,2]]
+    out<-compute_proj(M=M_fold, C=C_fold, K=Ks[i],Kt=0,lam=lams[l])
     U=out$U
-    Mfold<-ppmii[indgr0[folds[j]:(folds[j+1]-1),][,1],indgr0[folds[j]:(folds[j+1]-1),][,2]]
-    err<-c(err,c((ppmii-t(U)%*%V)[indgr0[folds[j]:(folds[j+1]-1),][,1],indgr0[folds[j]:(folds[j+1]-1),][,2]]))
+    Mfold<-what[indgr0[folds[j]:(folds[j+1]-1),][,1],indgr0[folds[j]:(folds[j+1]-1),][,2]]
+    Cfold<-what2[indgr02[folds2[j]:(folds2[j+1]-1),][,1],indgr02[folds2[j]:(folds2[j+1]-1),][,2]]
+    err<-c(err,c((what-t(U)%*%V)[indgr0[folds[j]:(folds[j+1]-1),][,1],indgr0[folds[j]:(folds[j+1]-1),][,2]]))
+    err2<-c(err2,c((what2-t(U)%*%Q)[indgr02[folds2[j]:(folds2[j+1]-1),][,1],indgr02[folds2[j]:(folds2[j+1]-1),][,2]]))
   }
   errs[[i]]<-err
-  
+  errs2[[i]]<-err2
 }
 
 save(errs, file="errs_cv10_sdgs.RData")

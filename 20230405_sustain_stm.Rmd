@@ -242,6 +242,7 @@ library(stm)
 stm_dfm <- convert(mydfm, to = "stm")
 str(stm_dfm, max.level = 1)
 ```
+
 ```{r}
 first_model <- stm(documents = stm_dfm$documents,
                    vocab = stm_dfm$vocab,
@@ -256,7 +257,30 @@ plot(first_model)
 
 ```{r}
 semanticCoherence(first_model, stm_dfm$documents)
+tcm = crossprod(sign(as.matrix(mydfm)))
+topwords<-t(labelTopics(first_model,n=20)$prob)
+mean(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
 ```
+
+```{r}
+stm_dfm2 <- convert(mydfm2, to = "stm")
+second_model <- stm(documents = stm_dfm2$documents,
+                   vocab = stm_dfm2$vocab,
+                   K = 8,
+                   verbose = TRUE)
+```
+
+```{r}
+plot(second_model)
+```
+
+```{r}
+semanticCoherence(second_model, stm_dfm2$documents)
+tcm = crossprod(sign(as.matrix(mydfm2)))
+topwords<-t(labelTopics(second_model,n=20)$prob)
+mean(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+```
+
 
 ```{r}
 tibble(
