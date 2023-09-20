@@ -1,14 +1,8 @@
 # Topic extraction with side information for sustainability analysis
 
-## Motivation
+## Introduction
 
 -   Growing interest to sustainable investments
-
-<figure>
-<img src="images/sinvest1.png" style="width:50.0%"
-alt="Source: Consultancy.eu" />
-<figcaption aria-hidden="true">Source: Consultancy.eu</figcaption>
-</figure>
 
 -   Investment decisions integrate individual value systems
 
@@ -17,18 +11,9 @@ alt="Source: Consultancy.eu" />
     -   how to quantify sustainability?
     -   how to compare investment possibilities?
 
--   Environment, social, governance (ESG) ratings diverge:
-
-<figure>
-<img src="./images/esg_ratings.png" style="width:50.0%"
-alt="Ratings of different providers against a benchmark. Source: Berg, Kölbel, and Rigobon (2022) “Aggregated confusion The Divergence of ESG Ratings”" />
-<figcaption aria-hidden="true">Ratings of different providers against a
-benchmark. Source: <span class="citation" data-cites="berg2022">Berg,
-Kölbel, and Rigobon (2022)</span> “Aggregated confusion The Divergence
-of ESG Ratings”</figcaption>
-</figure>
-
-## Motivation
+-   Environment, social, governance (ESG) ratings diverge as Berg,
+Kölbel, and Rigobon (2022) in “Aggregated confusion The Divergence
+of ESG Ratings”
 
 -   Kang and Kim (2022): Another source of information easily available
     to private investors
