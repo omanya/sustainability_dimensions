@@ -1,4 +1,4 @@
-# Identifying sustainability dimensions of corporate reports by directed topic analysis
+# Topic extraction with side information for sustainability analysis
 
 ## Motivation
 
