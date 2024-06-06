@@ -1,0 +1,218 @@
+---
+title: "data preprocessing"
+author: "Maria Osipenko"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Data preprocessing
+
+Reading the pdf contents of the reports
+
+```{r}
+rm(list=ls())
+# #files<-list.files("data_pdf/reports",full.names = T)
+# files<-list.files("data_pdf/reports_tech",full.names = T)
+# 
+# contents<-paragraphs<-data.frame()
+# 
+# for (f in 1:length(files)){
+#     #print(files[f])
+#     content<-Rpoppler::PDF_text(files[f])
+#     contents<-rbind(contents, data.frame(text=content,firm=rep(files[f],length(content))))
+#     paragraph<-unlist(strsplit(content, "\n[0-9]"))#too long
+#     paragraph<-paragraph[nchar(paragraph)>300]
+#     paragraphs<-rbind(paragraphs, data.frame(text=paragraph,firm=rep(files[f],length(paragraph))))
+# }
+# 
+# preproc_content<-function(contents,thr=300){
+#   contents<-contents[nchar(as.character(contents[,1]))>thr,]
+#   contents[,1]<-gsub(pattern="\n[0-9]",replacement=" ",x=as.character(contents[,1]))
+#   contents[,1]<-gsub(pattern="-\n",replacement="",x=as.character(contents[,1]))
+#   contents[,1]<-gsub(pattern="\n",replacement=" ",x=as.character(contents[,1]))
+#   return(contents)
+# }
+# 
+# contents<-preproc_content(contents)
+# paragraphs<-preproc_content(paragraphs)
+# 
+# 
+# 
+
+```
+
+```{r}
+# data<-contents
+# data$text<-as.character(data$text)
+# # save(data, file="data_sustain.RData")
+# save(data, file="data_sustain_tech.RData")
+# 
+# # data<-paragraphs
+# # data$text<-as.character(data$text)
+# # save(data, file="data_sustain_paragr.RData")
+```
+
+```{r}
+#load("data_sustain_paragr.RData")
+load("data_sustain_tech.RData")
+```
+
+set up a text corpus with corporate reports
+
+```{r, warnings=F, message=F, include=FALSE}
+library(quanteda)
+data$id<-1:nrow(data)
+mycorpus<-corpus(data, docid_field="id",text_field="text")
+print(paste("Number of docs is",ndoc(mycorpus)))
+#tokenize
+tk<-tokenizers::tokenize_word_stems(data[,1], stopwords = c(stopwords::stopwords("en"),"toyota", "walmart","nestle","basf","ikea","ms","m&s",
+                                                            "intel"#, "microsoft","google","apple","ibm","amazon"
+                                                            ,2011:2022))
+tk<-tokens(as.tokens(tk), remove_punct=TRUE, remove_numbers = TRUE, remove_symbols = TRUE,remove_url = TRUE, remove_separators = TRUE, split_hyphens=T)
+tk2<-tokens_ngrams(as.tokens(tk),n=1:2,skip=2)
+
+tk<-gsub("\\'","", tk)
+#dfm
+# mydfm<-dfm(tk2, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+mydfm<-dfm(tk, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+
+
+words2remove<-c("[[:digit:]]","toyota", "walmart","nestle","basf","ikea","ms","m&s","per", "wal", "mart","nestlé","bayer","www.sdgcompass.org", "e.g","i’m","said",
+                "ulrich", "han", "wayn", "heinz", "smith", "brudermül", "kurt", "suckal", "margret","harald", "gandhi", "sanjeev",  "michael", "andrea",
+                "franz", "diekmann", "jürgen" , "hambrecht" ,   "schäferkordt","robert","e.u" ,"kpmg" )
+
+#keep only terms with more than three chars
+mydfm<-dfm_select(mydfm,pattern=words2remove, valuetype="regex",selection="remove",min_nchar = 3)
+mydfm<-dfm_select(mydfm,pattern=stopwords::stopwords("en"),valuetype="fixed",selection="remove")
+#keep only words with frequency >=10
+mydfm<-dfm_trim(mydfm, min_docfreq = 0.005, max_docfreq=0.5,docfreq_type="prop")
+#take relative frequencies as entries
+mydfm_w<-dfm_weight(mydfm, scheme = "prop")
+mydfm_iw<-dfm_tfidf(mydfm)
+
+
+#"Number of docs is 5031"
+
+```
+
+read the pdfs with sustainability goals (https://www.un.org/sustainabledevelopment/)
+
+```{r}
+# files<-list.files("data_pdf/SDGs",full.names = T,recursive = T)
+# 
+# contents<-data.frame()
+# 
+# for (f in 1:length(files)){
+#     #print(files[f])
+#     content<-Rpoppler::PDF_text(files[f])
+#     contents<-rbind(contents, data.frame(text=content,firm=rep(files[f],length(content))))
+# }
+# contents<-contents[nchar(as.character(contents[,1]))>300,]
+# contents[,1]<-gsub(pattern="\n[0-9]",replacement=" ",x=as.character(contents[,1]))
+# contents[,1]<-gsub(pattern="-\n",replacement="",x=as.character(contents[,1]))
+# contents[,1]<-gsub(pattern="\n",replacement=" ",x=as.character(contents[,1]))
+```
+
+```{r}
+# goals<-contents
+# #goals$text<-as.character(data$text)
+# save(goals, file="goals_sustain.RData")
+```
+
+```{r}
+load("goals_sustain.RData")
+```
+
+set up a text corpus with sustainability goals (https://www.un.org/sustainabledevelopment/)
+
+```{r, warnings=F, message=FALSE, include=FALSE}
+library(quanteda)
+goals$id<-1:nrow(goals)
+mycorpus<-corpus(goals, docid_field="id",text_field="text")
+print(paste("Number of docs is",ndoc(mycorpus)))
+#tokenize
+tkk<-tokenizers::tokenize_word_stems(goals[,1], stopwords = c(stopwords::stopwords("en")))
+tkk<-tokens(as.tokens(tkk), remove_punct=TRUE, remove_numbers = TRUE, remove_symbols = TRUE,remove_url = TRUE, remove_separators = TRUE, split_hyphens=T)
+tk22<-tokens_ngrams(as.tokens(tkk),n=1:2,skip=2)
+
+#tkk<-gsub("\\'","", tkk)
+#dfm
+# mydfm2<-dfm(tk22, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+mydfm2<-dfm(tkk, verbose = FALSE,tolower=TRUE)%>%dfm_wordstem()
+#keep only terms with more than two chars
+mydfm2<-dfm_select(mydfm2,pattern=words2remove, valuetype="regex",selection="remove",min_nchar = 3)
+mydfm2<-dfm_select(mydfm2,pattern=stopwords::stopwords("en"),valuetype="fixed",selection="remove")
+#keep only words with frequency >=2
+mydfm2<-dfm_trim(mydfm2, min_docfreq = 0.01, max_docfreq=0.5,docfreq_type="prop")
+#take relative frequencies as entries
+mydfm2_w<-dfm_weight(mydfm2, scheme = "prop")
+mydfm2_iw<-dfm_tfidf(mydfm2)
+#mydfm2
+
+mydfm2<-dfm_group(mydfm2,goals$firm)
+
+length(goals$firm)
+#"Number of docs is 35"
+```
+
+
+combine the features
+
+```{r}
+#<!--combine the features-->
+myfeatures<-c(featnames(mydfm), featnames(mydfm2))
+myfeatures<-myfeatures[!duplicated(myfeatures)]
+```
+
+apply different weighting schemes
+
+```{r}
+mydfm_n<-dfm_match(mydfm, features=myfeatures)
+mydfmiw_n<-dfm_tfidf(mydfm_n)
+mydfmw_n<-dfm_weight(mydfm_n,scheme="prop")
+mydfmlw_n<-dfm_weight(mydfm_n,scheme="logcount")
+mydfmmw_n<-dfm_weight(mydfm_n,scheme="propmax")
+mydfmlaw_n<-dfm_weight(mydfm_n,scheme="logave")
+
+mydfm_n2<-dfm_match(mydfm2, features=myfeatures)
+#mydfm_n2
+mydfmw_n2<-dfm_tfidf(mydfm_n2)
+mydfmiw_n2<-dfm_tfidf(mydfm_n2)
+mydfmw_n2<-dfm_weight(mydfm_n2,scheme="prop")
+mydfmlw_n2<-dfm_weight(mydfm_n2,scheme="logcount")
+mydfmmw_n2<-dfm_weight(mydfm_n2,scheme="propmax")
+mydfmlaw_n2<-dfm_weight(mydfm_n2,scheme="logave")
+```
+
+save
+
+```{r}
+dfmlist_reports<-list(noweight=mydfm_n, tfidf=mydfmiw_n, prop=mydfmw_n,logcount=mydfmlw_n, logave=mydfmlaw_n)
+dfmlist_goals<-list(noweight=mydfm_n2, tfidf=mydfmiw_n2, prop=mydfmw_n2,logcount=mydfmlw_n2, logave=mydfmlaw_n2)
+
+save(dfmlist_reports, file="dfmlist_reports.RData")
+save(dfmlist_goals, file="dfmlist_goals.RData")
+```
+
+
+
+```{r}
+#prepare coherence
+#compute cooccurrences
+tcm = crossprod(sign(as.matrix(mydfm_n)))
+tcm2 = crossprod(sign(as.matrix(mydfm_n2)))
+
+#smooth otherwise :0
+smooth<-10^(-12)# 10^(-5)
+diag(tcm)<-diag(tcm)+smooth
+diag(tcm2)<-diag(tcm2)+smooth
+
+#save
+save(tcm, file="tcm.RData")
+save(tcm2, file="tcm2.RData")
+```

@@ -183,8 +183,7 @@ mydfm<-dfm_select(mydfm,pattern=stopwords::stopwords("en"),valuetype="fixed",sel
 mydfm<-dfm_trim(mydfm, min_docfreq = 0.005, max_docfreq=0.5,docfreq_type="prop")
 #take relative frequencies as entries
 #mydfm_w<-dfm_weight(mydfm, scheme = "prop")
-mydfm
-topfeatures(mydfm)
+
 ```
 
 sustainability goals (https://www.un.org/sustainabledevelopment/)
@@ -235,7 +234,7 @@ mydfm2<-dfm_select(mydfm2,pattern=stopwords::stopwords("en"),valuetype="fixed",s
 mydfm2<-dfm_trim(mydfm2, min_docfreq = 0.01, max_docfreq=0.5,docfreq_type="prop")
 #take relative frequencies as entries
 #mydfm_w<-dfm_weight(mydfm, scheme = "prop")
-mydfm2
+#mydfm2
 
 mydfm2<-dfm_group(mydfm2,goals$firm)
 ```
@@ -279,36 +278,6 @@ dtmw<-as.matrix(mydfmw_n)
 dtmw2<-as.matrix(mydfmw_n2)
 ```
 
-
-compute the marginal probs $p(w)$.
-
-
-```{r}
-# w_p<-matrix(apply(dtm,2,sum)/sum(dtm),dim(dtm)[1],dim(dtm)[2],byrow=T)#probability of word
-# w_p2<-matrix(apply(dtm2,2,sum)/sum(dtm2),dim(dtm2)[1],dim(dtm2)[2],byrow=T)#probability of word
-
-```
-
-compute ppmi:
-
-\[ppmi_{wc} =\max\left(0,\log \frac{p(w,c)}{p(w)p(c)}\right)\]
-
-```{r}
-# pmi<-log2(dtmw/w_p)
-# ppmi<-pmi; ppmi[ppmi<0]<-0
-# ppmi[is.infinite(ppmi)|is.nan(ppmi)]<-0
-# 
-# pmi2<-log2(dtmw2/w_p2)
-# ppmi2<-pmi2; ppmi2[ppmi2<0]<-0
-# ppmi2[is.infinite(ppmi2)|is.nan(ppmi2)]<-0
-# 
-# pmi<-t(pmi)
-# pmi2<-t(pmi2)
-# 
-# ppmii<-t(ppmi)
-# ppmii2<-t(ppmi2)
-
-```
 
 
 ## HALS 
@@ -387,50 +356,50 @@ diag(tcm2)<-diag(tcm2)+smooth
  topics
  
 ```{r}
-U=out$U
-tnames<-character(nrow(U))
-for( i in 1:nrow(U)){
-  print(paste("Topic ",i))
-  print(rownames(what[ind,])[order(U[i,],decreasing=T)][1:20])
-  tnames[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:3], collapse=" ")
-}
+# U=out$U
+# tnames<-tnames_long<-character(nrow(U))
+# for( i in 1:nrow(U)){
+#   print(paste("Topic ",i))
+#   tnames_long[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:20], collapse=" ")
+#   tnames[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:3], collapse=" ")
+# }
 
 
 ```
  project the goals on those topics
  
 ```{r}
-project<-function(newdata, basis){
-  M<-newdata
-  U<-basis
-  V<-solve((U)%*%t(U))%*%(U)%*%(M); V[V<0]<-0
-    for(p in 1:nrow(U)){
-      V[p,]<-update_v_p(p=p,M=M,U=U,V=V)
-    }
-  return(V)
-}
-Vp<-project(what2[ind,],out$U)
-Vs<-Vp/matrix(apply(Vp,2,sum),dim(Vp)[1],dim(Vp)[2],byrow=T)
+# project<-function(newdata, basis){
+#   M<-newdata
+#   U<-basis
+#   V<-solve((U)%*%t(U))%*%(U)%*%(M); V[V<0]<-0
+#     for(p in 1:nrow(U)){
+#       V[p,]<-update_v_p(p=p,M=M,U=U,V=V)
+#     }
+#   return(V)
+# }
+# Vp<-project(what2[ind,],out$U)
+# Vs<-Vp/matrix(apply(Vp,2,sum),dim(Vp)[1],dim(Vp)[2],byrow=T)
 ```
 
 ```{r}
-nms<-unlist(strsplit(rownames(t(what2)),"_")); nms<-nms[grepl(".pdf",nms)]; nms<-gsub(".pdf","",nms) #c(1,2,3,8,9,4,5,10,11,16,17,6,7,12,14,13,15)
-par(mfrow=c(3,3),mar=rep(2,4))
-
-for(i in 2:nrow(U)){
-  nums<-c(1,i)
-  plot(c(Vs[nums[1],]),c(Vs[nums[2],]),col=NA,ylim=c(-0.1,1),xlab="",ylab="",main=paste("topic",i,":",tnames[i]))
-  abline(h=0,lty=2)
-  text(c(Vs[nums[1],]),c(Vs[nums[2],]),nms)
-}
+# nms<-unlist(strsplit(rownames(t(what2)),"_")); nms<-nms[grepl(".pdf",nms)]; nms<-gsub(".pdf","",nms) #c(1,2,3,8,9,4,5,10,11,16,17,6,7,12,14,13,15)
+# par(mfrow=c(3,3),mar=rep(2,4))
+# 
+# for(i in 2:nrow(U)){
+#   nums<-c(1,i)
+#   plot(c(Vs[nums[1],]),c(Vs[nums[2],]),col=NA,ylim=c(-0.1,1),xlab="",ylab="",main=paste("topic",i,":",tnames[i]))
+#   abline(h=0,lty=2)
+#   text(c(Vs[nums[1],]),c(Vs[nums[2],]),nms)
+# }
 
 ```
 compute coherence
 
 ```{r}
  topwords<-NULL
-    for(i in 1:nrow(U)){
-      topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+    for(i in 1:nrow(out$U)){
+      topwords<-cbind(topwords,rownames(what)[order(out$U[i,],decreasing=T)][1:20])
     }
   cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
   cohi[cohi==0]<-NA
@@ -445,26 +414,17 @@ c(mcohi, mean(mcohi))
 ```{r}
 ind<-TRUE
 lam=100#225
-out<-compute_proj(M=what, C=what2,K=10,lam=lam) # K=9, lam=200
-#out$losses[1]/(out$losses[2]*lam)
-(out$losses[1]/prod(dim(what)))/(out$losses[2]/prod(dim(what2)))
-#out$props
+out<-compute_proj(M=what, C=what2,K=8,lam=lam) # K=9, lam=200
 
-#out$losses[1]/prod(dim(what))
-#out$losses[2]/prod(dim(what2))
 ```
 
 
  topics
  
 ```{r}
-U=out$U
-tnames<-character(nrow(U))
-
-for( i in 1:nrow(U)){
+for( i in 1:nrow(out$U)){
   print(paste("Topic ",i))
-  print(rownames(what[ind,])[order(U[i,],decreasing=T)][1:20])
-  tnames[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:3], collapse=" ")
+  print(rownames(what[ind,])[order(out$U[i,],decreasing=T)][1:20])
 }
 
 
@@ -474,29 +434,29 @@ for( i in 1:nrow(U)){
 adjust scores on 17 goals to sum up to one over the topics -> can see the relatedness
 
 ```{r}
-Q<-out$Q
-Qs<-Q/matrix(apply(Q,2,sum),dim(Q)[1],dim(Q)[2],byrow=T)
+# Q<-out$Q
+# Qs<-Q/matrix(apply(Q,2,sum),dim(Q)[1],dim(Q)[2],byrow=T)
 ```
 
 
 
 ```{r}
-nms<-unlist(strsplit(rownames(t(what2)),"_")); nms<-nms[grepl(".pdf",nms)]; nms<-gsub(".pdf","",nms) #c(1,2,3,8,9,4,5,10,11,16,17,6,7,12,14,13,15)
-par(mfrow=c(3,3),mar=rep(2,4))
-
-for(i in 2:nrow(U)){
-  nums<-c(1,i)
-  plot(c(Qs[nums[1],]),c(Qs[nums[2],]),col=NA,ylim=c(-0.1,1),xlab="",ylab="",main=paste("topic",i,":",tnames[i]))
-  abline(h=0,lty=2)
-  text(c(Qs[nums[1],]),c(Qs[nums[2],]),nms)
-}
+# nms<-unlist(strsplit(rownames(t(what2)),"_")); nms<-nms[grepl(".pdf",nms)]; nms<-gsub(".pdf","",nms) #c(1,2,3,8,9,4,5,10,11,16,17,6,7,12,14,13,15)
+# par(mfrow=c(3,3),mar=rep(2,4))
+# 
+# for(i in 2:nrow(U)){
+#   nums<-c(1,i)
+#   plot(c(Qs[nums[1],]),c(Qs[nums[2],]),col=NA,ylim=c(-0.1,1),xlab="",ylab="",main=paste("topic",i,":",tnames[i]))
+#   abline(h=0,lty=2)
+#   text(c(Qs[nums[1],]),c(Qs[nums[2],]),nms)
+# }
 
 ```
 
 ```{r}
  topwords<-NULL
-    for(i in 1:nrow(U)){
-      topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+    for(i in 1:nrow(out$U)){
+      topwords<-cbind(topwords,rownames(what)[order(out$U[i,],decreasing=T)][1:20])
     }
   cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
   cohi[cohi==0]<-NA
@@ -587,18 +547,18 @@ compute coherence
 
 ```{r}
 load("cohs_tech.RData")
-cohs$coh
+# cohs$coh
 # plot(lams,cohs$coh[1,], type="l",col=1, ylim=c(-5,-2))
 # for (i in 2:(length(Ks)-5)){
 #   lines(lams,cohs$coh[i,],col=i)
 # }
-plot(lams,cohs$coh[which(Ks==6),], type="l",col=1, ylim=c(-5,-2))
+plot(lams,cohs$coh[which(Ks==8),], type="l",col=1, ylim=c(-5,-1))
 
 #which(cohs$coh==max(cohs$coh),arr.ind=T)
 #cohs$coh[which(cohs$coh==max(cohs$coh),arr.ind=T)]
 
 opt_lam<-lams[apply(cohs$coh,1,which.max)]
-plot(Ks,opt_lam, type="l")
+#plot(Ks,opt_lam, type="l")
 ```
 
 
@@ -623,7 +583,7 @@ lams[ind_best[2]] #400
 Ks[ind_best[1]] #6
 
 #load("cohs.RData")
-#cohs$prop
+#cohs$coh[ind_best[1],ind_best[2]]
 
 ```
 
@@ -637,17 +597,22 @@ lam=lams[ind_best[2]]
 out<-compute_proj(M=what, C=what2,K=Ks[ind_best[1]],lam=lam) # K=9, lam=200
 #colnames
 colnames(out$U)<-rownames(what[ind,])
-out$Qs<-Q/matrix(apply(Q,2,sum),dim(Q)[1],dim(Q)[2],byrow=T)
+out$Qs<-out$Q/matrix(apply(out$Q,2,sum),dim(out$Q)[1],dim(out$Q)[2],byrow=T)
+
+Q<-out$Q; U<-out$U
 coln<-sapply(colnames(Q),function(x,split="/"){return(strsplit(x,split=split)[[1]][4])})
 coln<-substr(coln,1,nchar(coln)-4)
 colnames(out$Q)<-colnames(out$Qs)<-coln
 #topic names
-tnames<-character(nrow(U))
+tnames<-tnames_long<-character(nrow(U))
 for( i in 1:nrow(U)){
+  tnames_long[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:10], collapse=" ")
   tnames[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:3], collapse=" ")
 }
 out$tnames<-tnames
+out$tnames_long<-tnames_long
 #V
+V<-out$V
 coln<-sapply(colnames(V),function(x,split="/"){return(strsplit(x,split=split)[[1]][3])})
 coln<-substr(coln,1,nchar(coln)-4)
 for(i in 1:length(coln)){
@@ -685,6 +650,7 @@ adjust scores on 17 goals to sum up to one over the topics -> can see the relate
 ```{r}
 Q<-out$Q
 Qs<-out$Qs
+Qs
 ```
 
 
@@ -740,10 +706,6 @@ dist<-compute_all_dist(V,Q)
 rows_dist<-sapply(rownames(dist),function(x,split="/"){return(strsplit(x,split=split)[[1]][3])})
 rows_dist<-substr(rows_dist,1,nchar(rows_dist)-4)
 
-cols_dist<-sapply(colnames(dist),function(x,split="/"){return(strsplit(x,split=split)[[1]][4])})
-cols_dist<-substr(cols_dist,1,nchar(cols_dist)-4)
-
-colnames(dist)<-cols_dist
 rownames(dist)<-rows_dist
 ```
 
@@ -796,15 +758,20 @@ for(i in 2:length(names)){
 }
 satur<-rep(seq(0.1,1,0.1),times=length(names))
 
-plot(1:ncol(min_dist_norm),min_dist_norm[1,],col=NA,ylim=c(0,1),axes=F,ylab="",xlab="")
+plot(1:ncol(min_dist_norm),min_dist_norm[1,],col=NA,ylim=c(0,1),axes=F,ylab="norm. distance",xlab="")
 for(i in 1:nrow(min_dist_norm)){
   lines(1:ncol(min_dist_norm),min_dist_norm[i,],col=alpha(cols[i],satur[i]))
 }
 axis(2)
-axis(1,at=1:17,labels=colnames(min_dist_norm),cex.axis=0.5)
-legend(1,0.3,col=1:3,lty=1,legend=names[1:3],cex=0.7)
-legend(10,0.3,col=4:6,lty=1,legend=names[4:6],cex=0.7)
+axis(1,at=1:17,labels=paste0("G",1:17),cex.axis=0.5)
+legend(1,0.1,col=1:2,lty=1,legend=names[1:2],cex=0.7, bty="n")
+legend(4,0.1,col=3:4,lty=1,legend=names[3:4],cex=0.7, bty="n")
+legend(7,0.1,col=5:6,lty=1,legend=names[5:6],cex=0.7, bty="n")
+legend(10,0.1,col=7:8,lty=1,legend=names[7:8],cex=0.7, bty="n")
 
+```
+
+```{r}
 image(t(min_dist_norm), oldstyle = T, axes=F)
 
 coords<-seq(1,6,1)/6
@@ -820,6 +787,7 @@ for(i in 1:length(coords2)){
   text(coords2[i]*1.07,1.1,names2[i])
 }
 ```
+
 
 compute cosine similarity
 
@@ -843,7 +811,7 @@ for(i in 1:length(rows_dist)){
 }
 
 rownames(C)<-rows_dist_n
-colnames(C)<-cols_dist
+colnames(C)<-colnames(min_dist)
 
 reports<-unique(rows_dist_n)
 min_dist2<-matrix(NA,length(reports), ncol(dist))
@@ -934,7 +902,9 @@ Considering individual preferences
 Take a linear combination of the goals with weights $\beta=(\beta_1,\ldots,\beta_{17})^\top$ then $C\beta\approx UQ^\top\beta$ defines a "personalized" goal in terms of term occurrences approximated by the factorization.
 
 ```{r}
-b<-matrix(c(0,0,0,0.2,0,0,0.2,0,0,0.2,0,0,0.2,0,0,0.2,0),,1)
+weights<-c(10,0,0,0,0,0,3,0,0,4,0,0,5,0,0,0,0)
+weights<-weights/sum(weights)
+b<-matrix(weights,,1)
 mygoal<-t(U)%*%Q%*%b
 
 #score
@@ -996,5 +966,177 @@ if(year%in%years){
 names(min_disty)[order(min_disty)]
 
 
+```
+
+## Wassestein weights and distances
+
+```{r}
+# aggregate dtm
+firm_names<-sapply(rownames(dtm),function(x){return(strsplit(x,"/")[[1]][3])})
+firm_names<-sapply(firm_names,function(x){substr(x,1,nchar(x)-4)})
+firm_names[grepl("_s",firm_names)]<-substr(firm_names[grepl("_s",firm_names)],1,nchar(firm_names[grepl("_s",firm_names)])-2)
+# save(firm_names,file="firm_names.RData")
+
+dtm_agg<-aggregate(dtm,by=list(firm_names),sum)
+rownames(dtm_agg)<-dtm_agg$Group.1
+dtm_agg<-dtm_agg[,-1]
+
+#word dist for the reports
+dtm_agg<-dtm_agg/matrix(apply(dtm_agg,1,function(x){sum(as.numeric(x))}),nrow(dtm_agg), ncol(dtm_agg))
+
+#word dist for the goals
+dtm2_agg<-dtm2
+dtm2_agg<-dtm2_agg/matrix(apply(dtm2_agg,1,function(x){sum(as.numeric(x))}),nrow(dtm2_agg), ncol(dtm2_agg))
+goals<-sapply(rownames(dtm2),function(x){return(strsplit(x,"/")[[1]][4])})
+goals<-sapply(goals,function(x){substr(x,1,nchar(x)-4)})
+rownames(dtm2_agg)<-goals
+dtm2_agg<-dtm2_agg[match(goals,paste0("Goal_",1:17)),]
+```
+
+compute the cost matrix based on the word-topic embeddings and the wasserstein distance
+
+```{r}
+Cmat<-Csim<-matrix(0,ncol(dtm_agg),ncol(dtm2_agg))
+#cost mat
+for(w in 1:ncol(dtm_agg)){
+  for(ww in 1:ncol(dtm_agg)){
+       if(w!=ww){
+          Cmat[w,ww]<-sum((out$U[,w] - out$U[,ww])^2)
+          Csim[w,ww]<-1-sum(out$U[,w]*out$U[,ww])/sqrt(sum(out$U[,w]^2)*sum(out$U[,ww]^2))
+      }
+
+  }
+}
+save(Cmat, file="Cmat.RData")
+save(Csim, file="Csim.RData")
+```
+
+```{r}
+#wasserstein dist
+Wdist<-Wdist2<-matrix(NA,nrow(dtm2_agg),nrow(dtm_agg))
+for(i in 1:nrow(dtm2_agg)){
+  print(i)
+  for(j in 1:nrow(dtm_agg)){
+    #opt transport map
+    ot<-transport::transport(as.numeric(dtm2_agg[i,]),as.numeric(dtm_agg[j,]),Csim,fullreturn=T)
+    Wdist[i,j]<-ot$cost
+    ot<-transport::transport(as.numeric(dtm2_agg[i,]),as.numeric(dtm_agg[j,]),Cmat,fullreturn=T)
+    Wdist2[i,j]<-sqrt(ot$cost)
+  }
+}
+save(Wdist, file="Wdist.RData")
+save(Wdist2, file="Wdist2.RData")
+```
+
+@lee-etal-2022 use cosine dissimilarity as cost for OT distance calculation (contextualized token mover’s distance,CMD):
+
+\[C_{i,j}^{CMD}=1-\cos(x_i, x_j)\]
+
+with $x_\cdot$ denote the topic-term embeddings.
+
+Find an optimal transport plan $T^*$, such that:
+\[\begin{align*}\min_{T} &\sum_i\sum_j T_{ij}C_{ij},\\
+s.t. &T\mathbf 1_n = \mathbf p, T^\top \mathbf 1_n = \mathbf q\end{align*}\]
+
+where $T\in\mathbb R^{n\times n}$ is the transport plan matrix and $\mathbf p,\mathbf q$ are (term) probability vectors.
+
+
+```{r}
+#load("Wdist.Rdata")
+Wdist_sc<-Wdist
+#Wdist_sc<-Wdist2/matrix(apply(Wdist2,1,max),nrow(Wdist2),ncol(Wdist2))
+
+firm_names_agg<-aggregate(firm_names, by=list(firm_names),length)[,1]
+year<-sapply(firm_names_agg,function(x){strsplit(x,"_")[[1]][2]})
+Wdist_sc<-Wdist_sc[,year>=2018]
+
+#image(Wdist_sc,oldstyle = T, axes=F,col=(scales::alpha(RColorBrewer::brewer.pal(11, "RdYlGn"),0.99)),zlim=c(0,1))
+fields::image.plot(Wdist_sc,axes=F,col=rev(scales::alpha(RColorBrewer::brewer.pal(11, "RdYlGn"),0.99)),zlim=c(0,0.5))
+
+coords<-seq(0,ncol(Wdist_sc),5)/(ncol(Wdist_sc))
+coords2<-c(0,seq(1,17,1)/17)
+names0<-sapply(firm_names,function(x){strsplit(x,"_")[[1]][1]})
+names1<-names0[!duplicated(names0)]
+names2<-paste0("G",1:17)
+
+par(xpd=T)
+for(i in 1:length(coords)){
+  segments(-0.05,coords[i],1.05,coords[i])#add line
+  text(-0.1,coords[i]+0.05,names1[i])
+}
+for(i in 1:length(coords2)){
+  text(coords2[i]*1.07,1.1,names2[i])
+}
+
+c("#A50026", "#D73027", "#F46D43", "#FDAE61", "#FEE08B", "#FFFFBF", "#D9EF8B", "#A6D96A", "#66BD63", "#1A9850", "#006837")
+
+```
+
+Individual preferences
+
+```{r}
+#M1
+weights<-c(0,0,0,10,0,0,0,0,0,0,0,10,0,0,0,10,0)
+weights<-weights/sum(weights)
+b1<-matrix(weights,,1)
+#M2
+weights<-c(0,0,0,20,0,0,0,0,0,0,0,10,0,0,0,10,0)
+weights<-weights/sum(weights)
+b2<-matrix(weights,,1)
+#M3
+weights<-c(0,0,0,40,0,0,0,0,0,0,0,10,0,0,0,10,0)
+weights<-weights/sum(weights)
+b3<-matrix(weights,,1)
+#M4
+weights<-c(0,0,0,60,0,0,0,0,0,0,0,10,0,0,0,10,0)
+weights<-weights/sum(weights)
+b4<-matrix(weights,,1)
+#M5
+weights<-c(0,0,0,80,0,0,0,0,0,0,0,10,0,0,0,10,0)
+weights<-weights/sum(weights)
+b5<-matrix(weights,,1)
+mygoals<-t(cbind(t(dtm2_agg)%*%b1,t(dtm2_agg)%*%b2,t(dtm2_agg)%*%b3,t(dtm2_agg)%*%b4,t(dtm2_agg)%*%b5))
+```
+
+```{r}
+myWdist<-myWdist2<-matrix(0,nrow(mygoals),nrow(dtm_agg))
+for(i in 1:nrow(mygoals)){
+  print(i)
+  for(j in 1:nrow(dtm_agg)){
+    #opt transport map
+    ot<-transport::transport(as.numeric(mygoals[i,]),as.numeric(dtm_agg[j,]),Csim,fullreturn=T)
+    myWdist[i,j]<-ot$cost
+    ot<-transport::transport(as.numeric(mygoals[i,]),as.numeric(dtm_agg[j,]),Cmat,fullreturn=T)
+    myWdist2[i,j]<-sqrt(ot$cost)
+  }
+}
+#save(myWdist, file="myWdist.RData")
+```
+
+plot
+
+```{r}
+#load("myWdist.RData")
+Wdist_sc<-myWdist
+Wdist_sc<-Wdist_sc[,year>=2018]
+
+par(mfrow=c(1,2))
+#image(Wdist_sc,oldstyle = T, axes=F,col=(scales::alpha(RColorBrewer::brewer.pal(11, "RdYlGn"),0.99)),zlim=c(0,1))
+fields::image.plot(Wdist_sc,axes=F,col=rev(scales::alpha(RColorBrewer::brewer.pal(11, "RdYlGn"),0.99)),zlim=c(0,0.5))
+
+coords<-seq(0,ncol(Wdist_sc),5)/(ncol(Wdist_sc))
+coords2<-c(0,seq(1,nrow(mygoals),1)/nrow(mygoals))
+names0<-sapply(firm_names,function(x){strsplit(x,"_")[[1]][1]})
+names1<-names0[!duplicated(names0)]
+names2<-paste0("M",1:nrow(mygoals))
+
+par(xpd=T)
+for(i in 1:length(coords)){
+  segments(-0.15,coords[i],1.15,coords[i])#add line
+  text(-0.3,coords[i]+0.05,names1[i])
+}
+for(i in 1:length(coords2)){
+  text(coords2[i]*1.25,1.1,names2[i])
+}
 ```
 

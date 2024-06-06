@@ -1,0 +1,739 @@
+---
+title: "Choosing the nuisance parameters"
+author: "Maria Osipenko"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Using different weighting schemes with NMCF and choosing $\lambda$ and $K$
+
+```{r}
+rm(list=ls())
+
+load("dfmlist_reports.RData")
+load("dfmlist_goals.RData")
+load("tcm.RData")
+load("tcm2.RData")
+
+load("data_sustain_tech.RData")
+```
+
+```{r}
+source("functions.R")
+```
+
+```{r}
+lams_opt<-K_opt<-max_coh<-coh_reports<-coh_SDGs<-NULL
+```
+
+## Unweighted counts
+
+```{r}
+##tf
+dtm<-as.matrix(dfmlist_reports[[1]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[1]])
+
+```
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+
+```{r}
+# Ks<-seq(5,15)
+# lams<-seq(0,700,50)
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech.RData")
+# 
+# load("cohs_tech.RData")
+# max(cohs$coh) # -1.794809
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #350
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #8
+```
+ 
+
+```{r}
+# ##  more precise lambda
+# lams<-seq(300,400,10)
+# Ks<-seq(7,13)
+# #lamss<-seq(340,360,1)
+# #
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_precise.RData")
+# 
+# max(cohs$coh) # -1.785485
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #330
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #8
+```
+
+```{r}
+##  more precise lambda
+lams<-seq(321,339,1)
+Ks<-8#seq(7,13)
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_precise_precise.RData")
+
+
+load("cohs_tech_precise_precise.RData")
+max_coh<-c(max_coh,max(cohs$coh)) # -1.784248
+lams_opt<-c(lams_opt,min(lams[which(cohs$coh==max(cohs$coh))])) #334
+K_opt<-c(K_opt,Ks)
+coh_reports<-c(coh_reports,cohs$coh1[which.max(cohs$coh)])
+coh_SDGs<-c(coh_SDGs,cohs$coh2[which.max(cohs$coh)])
+
+```
+
+
+
+## TF weighting
+
+```{r}
+##tf
+dtm<-as.matrix(dfmlist_reports[[3]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[3]])
+
+```
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+
+```{r}
+# Ks<-seq(5,15)
+# lams<-seq(0,700,50)
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#     print(mean(cohi))
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_w.RData")
+# 
+# load("cohs_tech_w.RData")
+# max(cohs$coh) # -1.931588
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #650
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #8
+```
+
+```{r}
+# ##  more precise lambda
+# lams<-seq(610,690,10)
+# Ks<-seq(7,13)
+# #
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_w_precise.RData")
+# 
+# max(cohs$coh) # -1.919821
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #660
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #8
+```
+
+```{r}
+# ##  more precise lambda
+lams<-seq(651,669,1)
+Ks<-8
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_w_precise_precise.RData")
+
+
+load("cohs_tech_w_precise_precise.RData")
+max_coh<-c(max_coh,max(cohs$coh)) # -1.919821
+lams_opt<-c(lams_opt,min(lams[which(cohs$coh==max(cohs$coh))])) #660/661
+K_opt<-c(K_opt,Ks)
+coh_reports<-c(coh_reports,cohs$coh1[which.max(cohs$coh)])
+coh_SDGs<-c(coh_SDGs,cohs$coh2[which.max(cohs$coh)])
+
+```
+
+
+#### TF-IDF weighting
+
+```{r}
+##tfidf
+dtm<-as.matrix(dfmlist_reports[[2]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[2]])
+
+```
+
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+```{r}
+# Ks<-seq(5,15)
+# lams<-seq(0,700,50)
+#
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#     print(mean(cohi))
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_iw.RData")
+# 
+# load("cohs_tech_iw.RData")
+# max(cohs$coh) # -4.120631
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #350
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #15
+```
+ 
+```{r}
+# ##  more precise lambda
+# lams<-seq(310,390,10)
+# Ks<-seq(13,17)
+# #
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# 
+# save(cohs, file="cohs_tech_iw_precise.RData")
+# 
+# max(cohs$coh) # -4.11664
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #340
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #15
+```
+
+```{r}
+# ##  more precise lambda
+lams<-seq(331,349,1)
+Ks<-15
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_iw_precise_precise.RData")
+
+
+load("cohs_tech_iw_precise_precise.RData")
+max_coh<-c(max_coh,max(cohs$coh)) # -4.069348
+lams_opt<-c(lams_opt,min(lams[which(cohs$coh==max(cohs$coh))])) #346
+K_opt<-c(K_opt,Ks)
+coh_reports<-c(coh_reports,cohs$coh1[which.max(cohs$coh)])
+coh_SDGs<-c(coh_SDGs,cohs$coh2[which.max(cohs$coh)])
+
+```
+
+
+#### logcount
+
+```{r}
+
+dtm<-as.matrix(dfmlist_reports[[4]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[4]])
+
+```
+
+
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+
+
+```{r}
+# Ks<-seq(5,15)
+# lams<-seq(0,700,50)
+#
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#     print(mean(cohi))
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_lw.RData")
+# 
+# load("cohs_tech_lw.RData")
+# max(cohs$coh) #  -1.535629
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #400
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #6
+```
+
+```{r}
+# ##  more precise lambda
+# lams<-seq(360,440,10)
+# Ks<-seq(5,10)
+# #
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# save(cohs, file="cohs_tech_lw_precise.RData")
+# 
+# load("cohs_tech_lw_precise.RData")
+# max(cohs$coh) # -1.527614
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #390
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #6
+```
+
+```{r}
+# ##  more precise lambda
+lams<-seq(381,399,1)
+Ks<-6
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_lw_precise_precise.RData")
+
+
+load("cohs_tech_lw_precise_precise.RData")
+max_coh<-c(max_coh,max(cohs$coh)) # -1.527614
+lams_opt<-c(lams_opt,min(lams[which(cohs$coh==max(cohs$coh))])) #390
+K_opt<-c(K_opt,Ks)
+coh_reports<-c(coh_reports,cohs$coh1[which.max(cohs$coh)])
+coh_SDGs<-c(coh_SDGs,cohs$coh2[which.max(cohs$coh)])
+```
+
+
+#### logave
+
+```{r}
+dtm<-as.matrix(dfmlist_reports[[5]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[5]])
+
+```
+
+
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+
+
+```{r}
+# Ks<-seq(5,15)
+# lams<-seq(0,700,50)
+#
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#     print(mean(cohi))
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_law.RData")
+# 
+# load("cohs_tech_law.RData")
+# max(cohs$coh) #  -1.551855
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #400
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #6
+```
+
+
+```{r}
+# # ##  more precise lambda
+# lams<-seq(360,440,10)
+# Ks<-seq(5,10)
+# #
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# save(cohs, file="cohs_tech_law_precise.RData")
+# 
+# max(cohs$coh) # -1.539404
+# lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]] #430
+# Ks[which(cohs$coh==max(cohs$coh),arr.ind = T)[1]] #6
+```
+
+```{r}
+# ##  more precise lambda
+lams<-seq(421,439,1)
+Ks<-6
+# 
+# # compute coherence
+# coh<-coh1<-coh2<-mse<-prop<-prop2<-matrix(NA,length(Ks), length(lams))
+# for (k in 1:length(Ks)){
+#   for(l in 1:length(lams)){
+#     print(c(k,l))
+#     outt<-compute_proj(M=what, C=what2, K=Ks[k],lam=lams[l])
+#     U<-outt$U
+# 
+#     topwords<-NULL
+#     for(i in 1:nrow(U)){
+#       topwords<-cbind(topwords,rownames(what)[order(U[i,],decreasing=T)][1:20])
+#     }
+#     cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"),text2vec::coherence(topwords,tcm2, metrics="mean_logratio"))
+#     cohi[cohi==0]<-NA
+#     cohi<-apply(cohi,2,mean,na.rm=T)
+#     coh[k,l]<-mean(cohi)
+#     coh1[k,l]<-cohi[1]
+#     coh2[k,l]<-cohi[2]
+#     mse[k,l]<-(outt$losses[1])+(outt$losses[2])
+#     prop[k,l]<-outt$props[1]
+#     prop2[k,l]<-outt$props[2]
+#   }
+# }
+# 
+# cohs<-list(coh=coh, coh1=coh1, coh2= coh2,mse=mse,prop=prop,prop2=prop2)
+# # save(cohs, file="cohs_new.RData")
+# save(cohs, file="cohs_tech_law_precise_precise.RData")
+
+
+load("cohs_tech_law_precise_precise.RData")
+max_coh<-c(max_coh,max(cohs$coh)) # -1.537706
+lams_opt<-c(lams_opt,min(lams[which(cohs$coh==max(cohs$coh))])) #432
+K_opt<-c(K_opt,Ks)
+coh_reports<-c(coh_reports,cohs$coh1[which.max(cohs$coh)])
+coh_SDGs<-c(coh_SDGs,cohs$coh2[which.max(cohs$coh)])
+
+dfpars<-data.frame(weighting=c("none","tf","tf-idf","logcount","logave"),
+                   lambda=lams_opt,
+                   K=K_opt,
+                   coh_reports=coh_reports,
+                   coh_SDGs=coh_SDGs,
+                                      coh=max_coh)
+
+save(dfpars,file="dfpars.RData")
+```

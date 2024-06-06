@@ -1,0 +1,761 @@
+---
+title: "Directed topic extraction with side information for sustainability analysis"
+author: "Maria Osipenko"
+date: ''
+output: 
+  bookdown::pdf_document2:
+    extra_dependencies: ["tabularx"]
+    toc: false
+    fig_caption: yes
+    keep_tex: true
+    link-citations: true
+bibliography: [references.bib] 
+header-includes:
+- \usepackage{amstext}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+- \usepackage{algorithm,algorithmic}
+- \AtBeginEnvironment{CSLReferences}{\small}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+# Abstract{-}
+
+
+<!--Identifying sustainability dimensions of corporate reports by directed topic analysis-->
+Topic analysis represents each document of a text corpus in a low-dimensional latent topic space. In some cases, the desired topic representation is subject to specific requirements or guidelines constituting side information. For instance, sustainability-aware investors might be interested in automatically assessing firm sustainability aspects from the textual content of its corporate reports, focusing on the established 17 UN sustainability goals. The main corpus here contains the corporate report texts, while the texts with the definitions of the 17 UN sustainability goals represent the side information.
+
+Under the assumption that both text corpora share a common low-dimensional subspace, we propose to represent them in such a space via directed topic extraction by matrix co-factorization. Both the main and the side text corpora are first represented as term-context matrices, which are then jointly decomposed into word-topic and topic-context matrices. The word-topic matrix is common to both text corpora, whereas the topic-context matrices contain specific representations in the shared topic space. A nuisance parameter, which allows to shift the focus between the error minimization of individual factorization terms, controls the extent to which the side information is taken into account.
+
+With our approach, documents from the main and the side corpora can be related to each other in the resulting latent topic space. That is, the corporate reports are represented in the same latent topic space as the descriptions of the 17 UN sustainability goals, enabling a structured automatic sustainability assessment of the textual reports' content. We provide an algorithm for such directed topic extraction and propose techniques for visualizing and interpreting the results.
+
+# Introduction
+
+The market for sustainable investments is growing steadily. However, there are no uniform standards for comparing or quantifying the sustainability levels of firms. Although several agencies now provide environmental, social, and governance (ESG) ratings, @berg2022 point out the disagreement among these ratings across different rating agencies. In this situation, it seems difficult to overview the ESG development of potential investment firms and decide based on an investor's ESG value system.
+
+At the same time, large companies communicate their ESG-related strategies and actions in their sustainability reporting in the form of:
+
+- Corporate responsibility reports
+- Sustainability reports
+- Environmental action reports
+
+or similar sustainability-related reports. The intention of such reporting is to increase the transparency and accountability of ESG-related company actions for stakeholders, as noted by @soh2014.
+
+The analysis of sustainability-related textual sources has captured the attention of numerous researchers. To incorporate the specifics of sustainability texts, authors mainly rely on hand-crafted concepts and keywords. For instance, @LIEW2014 use word and phrase frequencies to extract common trends and their importance from sustainability reporting based on sustainability content trees. Using their five content categories and the associated keywords, @landrum2018 perform the content analysis of sustainability-related corporate reports based on the proportion of contained keywords.
+
+@tsalis2020  propose to evaluate the level of alignment of sustainability-related reports with the established 17 UN Sustainable Development Goals (SDGs, https://sdgs.un.org/goals). The SDGs represent an intergovernmental set of 17 goals that broadly address modern environmental and social challenges, adopted in 2015 by the UN General Assembly. The goal is to structure the information from textual sustainability reports with respect to the SDGs in a way that enables a sound comparison of companies' contributions to solving those major challenges. @tsalis2020 use a scoring system based on disclosure topics from the Global Reporting Initiative. The authors create a catalog of disclosure topics with respect to the SDGs using their expertise and previous research and use a scoring system to manually assign a score for each report for each catalog item, which they then aggregate.
+
+A common drawback of these works is the extensive use of human expertise in the analysis, which reduces the objectivity of the results on one hand and is time-consuming on the other.
+
+@kang2022 propose to assess textual information in sustainability-related reports using SDGs as an anchor fully automatically. They choose a sentence similarity method to assess the relatedness of the reports to the goals. The approach of @kang2022 is computationally intensive because each sentence in a report has to be compared to each sentence of an SDG text, and it does not provide a transparent report representation with low complexity, such as a representation in a low-dimensional topic space. The authors explain that they reject the classical word frequency-based topic analysis used in previous research because it cannot incorporate any "predefined theme structure." In this paper, we overcome these limitations by proposing a topic analysis method using co-matrix factorization, which integrates any predefined structure into the analysis. Our method leverages the information in textual sources on sustainability via automatic topic extraction while considering the value system established by the 17 SDGs, thus providing a low-dimensional topic representation convenient for assessing the level of association between the SDGs and sustainability-related reports.
+
+As a commonly used technique for structuring text data, topic analysis (@churchill2022) represents each document in a collection of documents in a low-dimensional latent topic space. The most popular classical methods are Latent (probabilistic) semantic analysis (@deerwester1990, @hofmann1999), Latent Dirichlet Allocation (LDA, @blei2003), as well as general-purpose dimension reduction methods like non-negative matrix factorization (NMF, @lee2000, @vangara2020), and extensions of these methods (e.g. in @Yang2015, @SULEMAN2021, and @figuera2024). Recently, deep neural network-based models have also been proposed (@Zhao2021).
+
+Topic extraction for structuring text data has been extensively used in financial literature. For instance, @LI2017 employs Latent Dirichlet Allocation (LDA) to structure financial stability reports. @chen2017 compares Principal Component Analysis, NMF, LDA, and deep learning models for text analytics in banking. @amini2018 perform automatic topic extraction using common methods specifically for sustainability-related reports. @chen2023 use LDA and neural network-based models to analyze news impact on financial markets. For a comprehensive review of text mining and topic analysis in finance literature, we refer to @loughran2016 and @gupta2020. Despite the popularity of LDA, @CHEN2019 and @egger2022 argue that NMF can outperform LDA by extracting interpretable topics, especially for short texts. Since we are going to cut the reports into small pieces of context, NMF is a promising technique for our needs. Moreover, @NUGUMANOVA2022 highlight the advantage of NMF-based methods for the efficient extraction of domain-specific terms, which is also relevant for our task with a sustainability focus.
+
+Recently, several LDA-based topic extraction methods that allow for explicitly embedding known structures or side information have been proposed. For instance, @Harandizadeh2022 propose using word2vec embeddings combined with LDA and vocabulary priors to obtain interpretable word embeddings. @eshima2023 embed prespecified keywords in LDA for the same reason. Similarly, @watanabe2022 use seeded LDA with a carefully chosen seeded vocabulary to assist in classifying documents into specific categories. These approaches account for additional information in topic extraction. However, the drawback of the mentioned approaches in @watanabe2022 and @eshima2023 lies in the need for manual intervention for keyword or vocabulary specification. @Harandizadeh2022 use word vectors from a pretrained general-purpose word2vec model, so it is unclear whether their model works for specific domains such as sustainability reports.
+
+On the other hand, some matrix factorization-based approaches integrate side information into dimension reduction. @rao2015 and later @zahng2020_graph propose integrating side information using graphs. They derive a graph-regularized version of matrix factorization and an associated alternating algorithm. However, their side information is not high-dimensional and incorporates few individual characteristics which form the basis for the graph links. Another way to consider high-dimensional additional information is through matrix co-factorization techniques. Co-factorization techniques factorize two or three matrices with some common cofactors simultaneously. For instance, @fang2011  consider user community information, and @luo2019 incorporate tagging and timestamps of ratings in their personalized recommendations via matrix co-factorization. This approach is transparent and easily adjustable. By introducing a nuisance parameter, which allows shifting focus between error minimization of individual factorization terms, additional flexibility is ensured.
+
+In this paper, we propose a topic model based on non-negative matrix co-factorization (NMCF) to extract sustainability-related topics from related textual sources using the 17 UN goals as side information. The advantages of our approach include fully automated topic extraction (without manual keyword search), interpretability, adaptivity (via nuisance parameter $\lambda$), and a simple, scalable implementation.
+
+The paper is structured as follows. In the next chapter, we explain the method used and derive the NMCF algorithm for topic extraction with side information. We also introduce the data in the form of sustainability-related reporting and the 17 UN goals and describe our preprocessing steps. The results of the application of our algorithm to the data follow. Finally, we conclude and discuss future research directions.
+
+# Data and Methods
+
+In this section, we introduce our data basis and describe the preprocessing steps. Subsequently, we present our method of non-negative matrix co-factorization (NMCF) and derive the NMCF algorithm for topic extraction with side information. 
+
+## Data and preprocessing
+
+Large listed companies disclose their sustainability-related actions in corporate responsibility reports, sustainability reports, or similar releases on a regular basis. These reports aim to increase transparency and raise sustainability awareness within the companies. A typical report contains many pages with concise messages about sustainability actions and related pictures.
+
+We use corporate responsibility and sustainability reports from the top eight listed tech companies with tickers: AAPL, AMZN, DELL, GOOG, IBM, INTC, MSFT, and SSU. The associated time period includes the years 2013 (or later) to 2022, depending on availability. The entities in the resulting main text corpus are the pages of the reports.
+
+Our side information consists of the texts of the 17 UN SDGs, which we obtain from the UN website (https://sdgs.un.org/goals). The entities in the side information text corpus are the texts of the individual goals' descriptions.
+
+All calculations are done in R (@rr). For the preprocessing on word level, we use R-Package Quanteda (@quanteda) to set up a corpus, to split in tokens, and compute the relative frequencies. We, first, structure our text corpora in the bag-of-words fashion (with two-grams as terms) and construct the term-context representations with the pooled vocabulary on this basis. In the next step, we combine the term in a common dictionary, such that our bag-of-words representation contains all relevant terms, 
+
+```{r}
+rm(list=ls())
+
+load("dfmlist_reports.RData")
+load("dfmlist_goals.RData")
+load("tcm.RData")
+load("tcm2.RData")
+
+load("data_sustain_tech.RData")
+load("dfpars.RData")
+```
+
+## Non-negative matrix co-factorization for sustainability analysis
+
+We assume that the corporate reports texts share a common topic structure with the sustainability goals description texts.
+<!--but also contain some other topics concerning e.g. financial statements.--> Moreover, we anticipate that the goals are written very focused using concrete sparse vocabulary, whereas the reports may refer to the same concepts using other wordings. That is, a common topic may contain words that are semantically relevant to sustainability goals vocabulary but not directly mentioned in the texts of the SDGs.
+That is, we assume, that both text corpora share a common low dimensional subspace, in which they can be compared to each other by means of some distance measure.
+
+To account for the mentioned issues, we define the following model for terms-document matrices arising from reports  and sustainability goals texts.
+
+\[M = U^\top V + E\]
+
+and 
+
+\[C = U^\top Q + F\]
+
+where 
+
+- $M$ is the (weighted) term-context matrix for the corporate reports with dimensions $(p\times n)$, where $p$ is the joint vocabulary (words and phrases with two co-occurring words) obtained from both reports and sustainability goals texts. $n$ is the number of corporate reports contexts, where the later represents one page of a corporate report. 
+- $C$ is the (weighted) term-context matrix for the sustainability goals with dimensions $(p\times m)$, where $p$ is again the joint vocabulary (words and phrases with two co-occurring words) obtained from both reports and sustainability goals texts. $m$ is the number of sustainability goals contexts, where each context represents each of the $17$ goals. 
+- $U$ is the term-topic representation matrix of dimensions $(p\times K)$, where $K$ is the number of common topics and $K\leq \min(rank(M),rank(C))$ is the number of topics.
+- $V$ is the context-topic representation matrix for the reports of dimensions $(K\times n)$.
+- $Q$ is the context-topic representation matrix for sustainability goals of dimensions $(K\times m)$.
+- $E$ and $F$ are matrices of error terms of dimensions $(p\times n)$ and $(p\times m)$ respectively.
+The overall dimensions for our data are $p=18,086$ and $n=6,891$.
+
+The associated topic extraction problem is then:
+
+\begin{equation}\min(||M - U^\top V||^2 + \lambda ||C-U^\top Q||^2)(\#eq:minc)
+\end{equation}
+
+where $\lambda$ adapts the importance of the loss on the second factorization term (see Figure \@ref(fig:figshem) for a schematic representation of the approach). 
+The value of $\lambda$ balances out the combined loss function. It is responsible for adjusting the impact of the loss parts concerning the reports and the SDGs. Since the second dimension of $C$ is much lower than that of $M$, the first part of the loss will dominate the co-factorization. To give more weight to the second part one can alternate $\lambda$.
+
+```{r figshem, out.width="80%",fig.cap="Schematic representation of the proposed matrix co-factorization."}
+knitr::include_graphics(here::here("images", "mf2.png"))
+```
+
+
+<!--\hfil![Schematic representation of the proposed matrix co-factorization.](./images/mf2.png){width=100%}\hfil-->
+
+Because of the non-negativity of the entries in $M$ and $C$, it makes sense to restrict at least $U$ to be non-negative. This enhances the interpretability of the resulting topics (@Kuang2015, @albalawi2020). So the minimization is subject to:
+
+\begin{equation}U, V,Q \geq 0 \text{ elementwise.}(\#eq:cons)
+\end{equation}
+
+
+The corresponding algorithm for minimizing \@ref(eq:minc) under the constraint \@ref(eq:cons) is based on the alternating minimization/ alternating projection in form of the hierarchical non-negative alternating least squares (HALS) of @cichocki2007 with our modification for the co-factorization setup (see also @degleris2019).
+
+```{r}
+source("functions.R")
+```
+
+<!--@cichocki2007 "Hierarchical ALS Algorithms for Nonnegative Matrix and 3D Tensor Factorization" and @degleris2019 "Fast Convolutive Nonnegative Matrix Factorization
+Through Coordinate and Block Coordinate Updates".-->
+
+For the loss function \(J(U,V,Q)\), we have:
+
+\begin{align*}J(U,V,Q) &= ||M-U^\top V||^2 + \lambda ||C-U^\top Q|| \\
+&= ||M-\sum_{k=1}^K u_kv_k^\top||^2 + \lambda ||C-\sum_{k=1}^K u_kq_k^\top||\\
+&=||M-\sum_{k\not=p} u_kv_k^\top - u_pv_p^\top||^2 + \lambda ||C-\sum_{k\not=p} u_kq_k^\top - u_pq_p^\top||\\
+&= Tr((M-\sum_{k\not=p} u_kv_k^\top)^\top (M-\sum_{k\not=p} u_kv_k^\top) - 2(M-\sum_{k\not=p} u_kv_k^\top)u_pv_p^\top + u_pv_p^\top v_p u_p) + \\
+&+\lambda Tr((C-\sum_{k\not=p} u_kq_k^\top)^\top (C-\sum_{k\not=p} u_kq_k^\top) - 2(C-\sum_{k\not=p} u_kq_k^\top)u_pq_p^\top + u_pq_p^\top q_p u_p).
+\end{align*}
+
+The derivative with respect to $u_p$ is:
+
+\[\frac{\partial J(U,V,Q)}{\partial u_p} = - 2(M-\sum_{k\not=p} u_kv_k^\top)v_p^\top + 2u_pv_p^\top v_p - 2\lambda (C-\sum_{k\not=p} u_kq_k^\top)q_p^\top + 2\lambda u_pq_p^\top q_p.\]
+
+Hence with Karush-Kuhn-Tucker conditions for optimality:
+
+\[u_p = \max\left(0, \frac{(M-\sum_{k\not=p} u_kv_k^\top)v_p^\top + \lambda (C-\sum_{k\not=p} u_kq_k^\top)q_p^\top)}{v_p^\top v_p + \lambda q_p^\top q_p}\right).\]
+
+The update rules for $v_p$ and $q_p$ do not differ from the HALS algorithm for NMF in @cichocki2007, that is:
+
+\[v_p = \max\left(0, \frac{u_p(M-\sum_{k\not=p} u_kv_k^\top)}{u_p^\top u_p}\right),\]
+
+\[q_p = \max\left(0, \frac{u_p(C-\sum_{k\not=p} u_kq_k^\top)}{u_p^\top u_p}\right).\]
+
+The resulting Algorithm 1 is presented below. 
+
+\begin{algorithm}[H]
+\begin{algorithmic}
+\REQUIRE $K, \lambda$
+\WHILE{not converged}
+\FOR{$k=1$ to $K$}
+\STATE update $V_k\leftarrow \max\left(\frac{U_k(M-U_{-k}^\top V_{-k})}{U_kU_k^\top },0\right)$
+\STATE update $Q_k\leftarrow \max\left(\frac{U_k(C-U_{-k}^\top Q_{-k})}{U_kU_k^\top},0\right)$
+\STATE update $U_k^\top \leftarrow \max\left(\frac{(M-U_{-k}^\top V_{-k})V_k^\top + \lambda (C-U_{-k}^\top Q_{-k})Q_k^\top}{ V_k^\top V_k  + \lambda Q_k^\top Q_k },0\right)$
+\ENDFOR
+\ENDWHILE
+\end{algorithmic}
+\caption{HALS algorithm for NMCF}
+\end{algorithm}
+
+$X_k$ denotes the $k$th row of the matrix $X$ and $X_{-k}$ denotes the matrix without its $k$th row.
+
+In summary, for a given $K$ and $\lambda$, the algorithm delivers a common low dimensional representation of \(M\) and \(C\) optimal in the sense of minimizing \(J(U,V,Q)\) under the non-negativity condition. \(U\) represents thereby a common latent topic space and $V,Q$ are the low dimensional embeddings for the respective contexts in the topic space. The resulting low dimensional representation of corporate reports together with SDGs create a basis for choosing, evaluating and monitoring investments with respect to their impact on the society and the environment. 
+
+
+
+# Application of NMCF
+
+In this section, we apply the proposed algorithm to the bag-of-words representations of the reports and SDG texts.  The associated NMCF algorithm requires the input of two nuisance parameter values. The first parameter $\lambda$ governs the importance of the side information in the co-factorization procedure.  The second parameter $K$ specifies the number of latent topics and thus the resulting dimension of the latent topic space. We propose a data-driven procedure for the choice of $K$ and $\lambda$ based on maximizing the average topic coherence, present and visualize the resulting topic representations, and demonstrate their usefulness for sustainability assessment using cosine similarity.
+
+## Tuning the model
+
+In order to accomplish the NMCF via the Algorithm 1, we have to specify the number of topics $K$ (which corresponds to the dimension of the latent topic space) and the nuisance parameter $\lambda$ for the loss function. Moreover, several weighting schemes for the term-context matrix are available. In this section, we test different weighting schemes and propose a data-driven procedure to simultaneously choose $K$ and $\lambda$ using their plausible ranges and maximizing topic coherence. 
+
+Coherence of topics is a popular metric for semantic validation of topic quality based on word co-occurrence (@thompson-mimno-2018, @text2vec). According to @gurdiel2021 coherence-based choice of topic number produces topics, interpretable for humans. Specifically, we employ the average mean-logratio topic coherence based on the internal text corpora of the reports and the SDGs.
+
+The log coherence for a topic $k$ with $m$ top words $w_{k,1},\ldots, w_{k,m}$, $coh_k$, is given as:
+
+\begin{equation}
+coh_{k}=\sum_{i=1}^m\sum_{j<i}\log\frac{\#(w_{k,i},w_{k,j})}{\#(w_{k,i})}+\varepsilon,(\#eq:coh)
+\end{equation}
+
+where $\#(\cdot)$ counts the contexts containing the input (a word or a word pair) and $\varepsilon$ is a smoothing parameter. This metric quantifies how often the top $m$ words in a topic $k$ co-occur in the reference text corpus. It is justified by the observation that words with similar meaning tend to co-occur in the same contexts. That is, coherence of a topic is positively associated with its interpretability.
+
+
+
+```{r}
+load("dfpars.RData")
+load("cohs_tech_lw.RData")
+Ks<-seq(5,15)
+lams<-seq(0,700,50)
+
+```
+
+<!--
+```{r figtraj, warning=F, message=F, out.width="80%",fig.cap="The trajectories for the average coherence for different choices of \\(K=5,6,\\ldots,15\\) and \\(\\lambda\\in [0,700]\\)."}
+par(lwd=2)
+plot(lams,loess(I(cohs$coh[1,])~lams)$fitted, type="l",col=1, ylim=c(-5,-1),axes=F,xlab=bquote(lambda),ylab="mean coherence")
+for (i in 2:(length(Ks))){
+    #lines(lams,cohs$coh[i,],col=i)
+    lsm<-loess.smooth(lams,cohs$coh[i,],span=0.55, degree=2)
+    lines(lsm$x,lsm$y,col=i)
+}
+points(lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]],max(loess(cohs$coh[4,]~lams)$fitted),col=2,pch="I")
+text(lams[which(cohs$coh==max(cohs$coh),arr.ind = T)[2]],max(cohs$coh),"K=8",col=2,pos=3)
+axis(1)
+axis(2)
+```
+
+-->
+
+To find the optimal values for the nuisance parameters in the sense of maximum topic coherence, we create the meaningful combinations of $K$ and $\lambda$ with $K=5,\ldots,15$ and $\lambda\in[0,700],$ apply the NMCF algorithm to our data, and compute the log coherence for each topic as defined in \@ref(eq:coh). We subsequently average the coherence measures over all topics:
+
+\begin{equation}
+\overline{coh}=\frac 1k \sum_{k=1}^Kcoh_k.(\#eq:acoh)
+\end{equation}
+
+As weighting alternatives, we use 
+
+- counts of term $i$ in context $j$, $tf_{ij}$, (labelled as "none"), 
+- counts weighted by total frequency, $tf_{ij}/\sum_{j}tf_{ij}$ (labelled as "tf"), 
+- counts weighted by total inverse frequency (labelled as "tf-idf"), 
+- logarithms of the counts, computed as $1+\log_{10}(tf_{ij})$ for $tf_{ij}>0$ and zero else (labelled as "logcount"), and 
+- logarithms of the counts standardized by average logcounts, computed as $\frac{1+\log_{10}(tf_{ij})}{1+\log\left(\overline{tf_{ij}}\right)}$ (labelled as "logave").
+
+For each weighting scheme above, we choose the combination of $K$ and $\lambda$ which results in the highest average log coherence computed by \@ref(eq:acoh). 
+The resulting optimal parameter values , $K$ and $\lambda$, for different weighting schemes are shown in Table \@ref(tab:tab00). Finally, we choose the weighting and the combination of $K$ and $\lambda$ which result in the highest average log coherence. 
+<!--The optimal nuisance parameters for our data is therefore the number of topics $K=6$ combined with the importance parameter $\lambda=390.$-->
+Given the results in Table \@ref(tab:tab00), overall the tqo logarithmic weighting schemes seem to give the best results regarding the average coherence. The highest average coherence is obtained by using logarithmic counts in the term-context matrices, $K=6$ topics, and $\lambda=390.$ Thus, we use this parameter combination for our further analysis.
+
+```{r tab00}
+caption<-"The resulting optimal parameter values for different weighting schemes, $K$ and $\\lambda$ using grid-search algorithm on maximum average coherence."
+
+knitr::kable(dfpars, align = "lll",
+               col.names = c("weighting","$\\lambda$","$K$","$\\overline{coh}$ (reports)","$\\overline{coh}$ (SDGs)","$\\overline{coh}$ (all)"),
+               row.names = F,
+               digits = 5,
+               caption = caption,
+             escape=F
+  )
+```
+
+```{r}
+dtm<-as.matrix(dfmlist_reports[[4]])
+rownames(dtm)<-data$firm
+
+dtm2<-as.matrix(dfmlist_goals[[4]])
+
+```
+
+```{r}
+#define matrices to factorize
+what<-t(dtm) # ppmii
+what2<-t(dtm2) #ppmii2
+```
+
+
+```{r, include=F}
+# fit matrix co-factorization with 8 topics and lam=350
+ind<-TRUE
+lam=390
+#fit
+out<-compute_proj(M=what, C=what2,K=6,lam=lam) # K=6, lam=390
+#colnames
+colnames(out$U)<-rownames(what[ind,])
+out$Qs<-out$Q/matrix(apply(out$Q,2,sum),dim(out$Q)[1],dim(out$Q)[2],byrow=T)
+
+Q<-out$Q; U<-out$U
+coln<-sapply(colnames(Q),function(x,split="/"){return(strsplit(x,split=split)[[1]][4])})
+coln<-substr(coln,1,nchar(coln)-4)
+colnames(out$Q)<-colnames(out$Qs)<-coln
+#topic names
+tnames<-tnames_long<-tnames_mid<-character(nrow(U))
+for( i in 1:nrow(U)){
+  tnames_long[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:10], collapse=" ")
+  tnames_mid[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:5], collapse=" ")
+  tnames[i]<-paste(rownames(what[ind,])[order(U[i,],decreasing=T)][1:3], collapse=" ")
+}
+out$tnames<-tnames
+out$tnames_long<-tnames_long
+out$tnames_mid<-tnames_mid
+#V
+V<-out$V
+coln<-sapply(colnames(V),function(x,split="/"){return(strsplit(x,split=split)[[1]][3])})
+coln<-substr(coln,1,nchar(coln)-4)
+for(i in 1:length(coln)){
+  if(grepl("_s",coln[i])){
+    coln[i]<-substr(coln[i],1,nchar(coln[i])-2)
+  }
+}
+colnames(V)<-coln
+Vs<-aggregate(t(V),by=list(colnames(V)), FUN=function(x){max(x[x>0])})
+colv<-Vs$Group.1
+Vs<-t(Vs[,-1])
+colnames(Vs)<-colv
+out$Vs<-Vs
+#save
+#save(out,file="out_k8_lam350.RData")
+```
+
+## Comparing the optimized model with a competing technique: keyword seeded LDA
+
+In the following, we asses the performance of our model in comparison to a competitive technique: keyword seeded topic model (keyATM) introduced in @eshima2023. This technique is a state-of-the-art Bayesian method for extracting topics with a specific focus achieved by utilizing user-specified topic-specific keywords in the topic prior distributions. The requirement of the methodology is to supply user-specified topics with keywords. However, with the SDGs texts as side information, we do not have such topics with keywords at hand. Therefore, we employ the following two-stage procedure to obtain an analogy to our model:
+
+- Obtain topic keywords by applying the classical LDA model to the SDG texts. The keywords are then a certain number of topwords for the extracted topics.
+- Plug-in the keywords in the keyATM to extract keyword assisted topics.
+
+That is, in the first stage, we fit the classical LDA model based on the SDG texts only. We have to choose the number of topics for this model. Based on the average topic coherence, we choose the number of topics in a data-driven manner as in the previous section. According to our coherence criterion \@ref(eq:acoh), the optimal topic number in this LDA model is $K=6$. The top 10 words for each extracted topic constitute our keywords set for the next stage. The resulting keywords are summarized in Table \@ref(tab:tabk).
+
+```{r}
+library(tidyverse)
+library(keyATM)
+
+#read the texts in keyATM format
+keyATM_docs <- keyATM_read(texts = dfmlist_reports[[1]])
+
+```
+
+```{r}
+
+library(text2vec)
+#extract the keywords via LDA
+seed=1234
+
+# K=4
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) # -3.049167
+# K=5
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) # -3.955379
+# # K=6
+# K=6
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) #-3.001648
+# #K=7
+# K=7
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) #-3.557092
+# #K=8
+# K=8
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) #-4.147609
+# #K=9
+# K=9
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) # -3.249112
+# #K=10
+# K=10
+# set.seed(seed)
+# lda_model = LDA$new(n_topics = K)
+# doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+# topwords<-lda_model$get_top_words(n = 20, topic_number = 1:K, lambda = 1)
+# cohi<-cbind(text2vec::coherence(topwords,tcm, metrics="mean_logratio"))
+# mean(cohi) #-4.118092
+
+K=6
+set.seed(seed)
+lda_model = LDA$new(n_topics = K)
+doc_topic_distr = lda_model$fit_transform(dfmlist_goals[[1]], n_iter = 20)
+keywords<-as.list(as.data.frame(lda_model$get_top_words(n = 10, topic_number = 1:K, lambda = 1)))
+
+#visualize_keywords(keyATM_docs, keywords)
+```
+
+```{r tabk}
+
+topics<-paste0("topic_",1:K)
+keyw<-apply(lda_model$get_top_words(n = 10, topic_number = 1:K, lambda = 1),2,paste, collapse=", ")
+
+topics_keyw<-data.frame(Category=topics,Keywords=keyw)
+caption<-"The keywords (top 10 topic words) associated with the six topics extracted by LDA."
+
+knitr::kable(cbind(paste("topic",1:6),topics_keyw[,-1]), align = "lll",
+               col.names = colnames(topics_keyw),
+               row.names = F,
+               digits = 5,
+               caption = caption
+  )
+```
+
+
+```{r}
+#fit keyATM model with 9 topics (the number of topics was chosen by inspecting the coherence of the resulting topics)
+# cohr<-cohg<-coh<-NULL
+# for (i in 0:4){
+#   set.seed(123)
+#   mod<-keyATM(docs = keyATM_docs,
+#                       no_keyword_topics = i,
+#                       keywords = keywords,
+#                       model = "base",
+#                       options = list(seed = 667))
+# 
+# #topwordsk<-as.matrix(top_words(mod,20,show_keyword = T))
+# topwords<-as.matrix(top_words(mod,20,show_keyword = F))[,1:6]
+# cohr<-c(cohr,mean(text2vec::coherence(topwords,tcm, metrics="mean_logratio")))
+# cohg<-c(cohg,mean(text2vec::coherence(topwords,tcm2, metrics="mean_logratio")))
+# coh<-c(coh, mean(c(cohr,cohg)))
+# save(mod, file=paste0("modkATM",i,".RData"))
+# }
+# df<-data.frame(K=6:10, coh=coh, cohr=cohr, cohg=cohg)
+# 
+# save(df,file=("df_coh_keyATM.RData"))
+
+```
+
+Besides the keyword topics, keyATM adopts a user-specified number of keywordless topics, which must also be provided. We use the top words for each LDA topic from the first stage and fit a keyword topic model with the six keyword topics and a varying number (zero to four) of additional topics without keywords. Subsequently, we compute the average coherence for the resulting models. The results are presented in Table \@ref(tab:tabrcoh). The best achieved average topic coherence is much lower than the one reported by our proposed model, demonstrating its advantage.
+
+We should mention here, however, that we did not calibrate any parameters of the keyATM priors. Such calibration could potentially improve the results. Still, in this competitive approach, we have to calibrate both the first and second stage models to arrive at the resulting topic extraction with the embedded side information contained in the SDGs. Moreover, one has to consider the additional uncertainty brought by such a "plug-in" estimator. In contrast, with our proposed model, we calibrated the nuisance parameters just once and estimated the decomposition in a single stage.
+
+```{r tabrcoh}
+library(kableExtra)
+load("df_coh_keyATM.RData")
+caption<-"The results on average coherence for the six keyword topics achieved by keyATM."
+
+knitr::kable(df, align = "lll",
+               col.names = c("total number of topics", "$\\overline{coh}$ (all)","$\\overline{coh}$ (reports)","$\\overline{coh}$ (SDGs)"),
+               row.names = F,
+               digits = 5,
+               caption = caption,
+             escape=FALSE
+  )
+```
+
+
+## Interpreting the best NNMF model
+
+The output of  Algorithm 1 are the decomposition matrices $V,U$ and $Q$. $U$ contains the term-topic representations. By looking at the largest entries of $U$ and the corresponding terms (the topwords), we can interpret the resulting latent topics. The entries of $V,Q$ and their relative magnitudes reveal the proportions (or the importance) of the topics in the text corpus. 
+  
+```{r figtpropg, out.width="80%",fig.height=4,fig.cap="Topic proportion and the words with the highest weight per topic for each of the discovered topics in the reports (top) and in the SDG texts (bottom)."}
+
+par(mfrow=c(2,1),xpd=T, mar=c(2,0,3,0))
+
+
+topic_names<-paste0("topic ", 1:length(out$tnames),": ",out$tnames_mid)
+topic_props<-apply(out$V,1,sum); topic_props<-topic_props/sum(topic_props)
+data_topics<-data.frame(topic_names,topic_props)
+data_topics<-data_topics[order(data_topics$topic_props, decreasing =F),]
+
+plot(c(0,0),c(0,0),type="n", ylim=c(0,nrow(data_topics)), xlim=c(0,0.8),axes=F, xlab="topic proportion",ylab="", main="Topics in the reports",cex.main=0.8)
+for(i in 1:nrow(data_topics)){
+  lines(c(0,data_topics[i,2]), c(i,i))
+  text(data_topics[i,2],i,data_topics[i,1], pos=4,cex=0.8)
+}
+axis(1)
+
+topic_props2<-apply(out$Q,1,sum); topic_props2<-topic_props2/sum(topic_props2)
+data_topics<-data.frame(topic_names,topic_props2)
+data_topics<-data_topics[order(data_topics$topic_props2, decreasing =F),]
+
+plot(c(0,0),c(0,0),type="n", ylim=c(0,nrow(data_topics)), xlim=c(0,0.8),axes=F, xlab="topic proportion",ylab="", main="Topics in the SDG texts",cex.main=0.8)
+for(i in 1:nrow(data_topics)){
+  lines(c(0,data_topics[i,2]), c(i,i))
+  text(data_topics[i,2],i,data_topics[i,1], pos=4, cex=0.8)
+}
+axis(1)
+```
+
+Figure \@ref(fig:figtpropg) shows the topic proportions and the words with the highest weight per topic for each of the discovered topics in the reports and the SGD texts respectively. The top five words shown in Figure \@ref(fig:figtpropg) already allow for satisfactory topic interpretation. The distribution of the topics is somewhat different in the reports compared to the SDG texts.  The topic "industri complet found local innov" becomes a large share in the distribution of both the reports and the SDGs. Whereas the topics "communic qualiti continu corpor right" and "water biodiv affect protect prevent" seem to dominate the reports and the SDGs respectively. Clearly, using this kind of topic proportion representation allows for discovering new action areas for the companies.
+
+In summary, the entries of $V$ and $Q$ deliver the $k$-dimensional context-topic representations enabling us to compare the underlying contexts in a low dimensional topic space using the embeddings of the contexts, which correspond to the entries of $V$ and $Q$. 
+<!--In the next figure below, we also show some chosen SDGs and the proportion of the respective topics contained in the SDG texts. The example SDGs are largely explained by the top three topics.
+![](./images/goals_approx3.png){width=90%}-->
+Using the obtained representations of the corporate reports together with the SDGs in the following, we show a couple of strategies for choosing, evaluating and monitoring investments with respect to their impact on society and the environment in the next subsection. 
+
+## Associating the reports with the SDGs
+
+Now we employ a popular cosine similarity measure for text contents to associate the reports to the SDGs. Other (dis)similarity measures can be used based on our proposed topic embeddings with side information focus. Since cosine similarity tends to perform better than other dissimilarity measures in text comparison tasks (see i.e. @alobed2021), the usage of cosine similarity in our association analysis is more inline with the main-stream text mining literature.
+
+Since in our analysis each report is a combination of several contexts, each represented in a $8$-dimensional topic space, we need to aggregate the context-based similarity measures to a report level. We use the maximum for the aggregation over all contexts to the report level.
+
+```{r}
+V<-out$V
+Q<-out$Q
+compute_dist<-function(x0,x1){
+  dist<-sqrt(sum((x0-x1)^2))
+  return(dist)
+}
+compute_col_dist<-function(x0mat,x1){
+  dist<-apply(x0mat,2,compute_dist,x1=x1)
+  return(dist)
+}
+compute_all_dist<-function(x0mat,x1mat){
+  dist<-apply(x1mat,2,compute_col_dist,x0mat=x0mat)
+  return(dist)
+}
+dist<-compute_all_dist(V,Q)
+#head(dist)
+
+rows_dist<-sapply(rownames(dist),function(x,split="/"){return(strsplit(x,split=split)[[1]][3])})
+rows_dist<-substr(rows_dist,1,nchar(rows_dist)-4)
+rows_dist<-sapply(rows_dist,function(x){strsplit(x, split="_s")[[1]]})
+
+colnames(V)<-rownames(dist)<-rows_dist
+
+```
+
+```{r}
+## compute min dist
+reports<-unique(rownames(dist))
+#reduce reports name with _s to firm_year
+for(i in 1:length(reports)){
+  if(grepl("_s",reports[i])){
+    reports[i]<-substr(reports[i],1,nchar(reports[i])-2)
+  }
+}
+reports_u<-reports
+reports<-reports[!duplicated(reports)]
+
+
+min_dist<-matrix(NA,length(reports), ncol(dist))
+for(i in 1:length(reports)){
+  disti<-dist[rownames(dist)==reports[i],]
+  min_dist[i,]<-apply(disti,2,min)
+}
+
+rownames(min_dist)<-reports
+colnames(min_dist)<-colnames(dist)
+min_dist<-min_dist[,match(paste0("Goal_",1:17),colnames(min_dist))]
+#head(min_dist)
+
+```
+
+```{r}
+## normalize
+min_dist_norm<-min_dist/matrix(apply(min_dist,2,max),dim(min_dist)[1],dim(min_dist)[2],byrow = T)
+min_dist_norm<-min_dist_norm[,match(paste0("Goal_",1:17),colnames(min_dist_norm))]
+#head(min_dist_norm)
+save(min_dist_norm,file="min_dist_norm.RData")
+```
+
+To obtain the resulting similarities, visualized in Figure \@ref(fig:figcos), we associate the report contents to the SDGs using the maximum cosine similarity. Therefore, we first compute the cosine similarity between each context of a report and each SDG, and then take the maximum over all report contexts as the resulting similarity measure.
+
+```{r figcos, out.width="100%",fig.height=3,fig.cap="Similarity measures between the reports over the available company-years (rows, starting with earlier years on the bottom) and the SDGs (columns) computed using the resulting topic embeddings using maximum cosine similarity. Darker colors correspond to higher similarity values."}
+
+coords<-seq(1,8.01,1.0)/8
+coords[length(coords)]<-1.01
+coords2<-c(0,seq(1,17,1)/17)
+names<-unique(sapply(reports,function(x,split="_"){return(strsplit(x,split=split)[[1]][1])}))
+names2<-paste0("G",1:17)
+
+cos.sim <- function(ix) 
+{
+    A = V[,ix[1]]
+    B = Q[,ix[2]]
+    return( sum(A*B)/sqrt(sum(A^2)*sum(B^2)) )
+}   
+n <- ncol(V)
+m<- ncol(Q)
+cmb <- expand.grid(i=1:n, j=1:m) 
+C <- matrix(apply(cmb,1,cos.sim),n,m)
+
+rownames(C)<-rows_dist
+colnames(C)<-colnames(min_dist)
+
+min_dist2<-matrix(NA,length(reports), ncol(dist))
+for(i in 1:length(reports)){
+  disti<-C[rownames(C)==reports[i],]; disti<-apply(disti,2,function(x){x[!is.nan(x)]})
+  min_dist2[i,]<-apply(disti,2,max)
+}
+rownames(min_dist2)<-reports
+colnames(min_dist2)<-colnames(dist)
+#head(min_dist2)
+
+cnames<-paste0("Goal_",1:17)
+min_dist2<-min_dist2[,match(cnames,colnames(min_dist2))]
+
+#plot
+par(mar=c(0,0,0,0))
+image(t(min_dist2),oldstyle=T,col=scales::alpha(RColorBrewer::brewer.pal(9,"YlGn"),0.9),axes=F, 
+      xlim=c(-0.2,1.05), ylim=c(-0.05,1.2))
+
+segments(-0.05,-0.01,1.05,-0.01)#add line
+for(i in 1:length(coords)){
+  segments(-0.05,coords[i],1.05,coords[i])#add line
+  text(-0.1,coords[i]-0.05,names[i],cex=0.7)
+}
+for(i in 1:length(coords2)){
+  text(coords2[i]*1.07,1.05,names2[i],cex=0.7)
+}
+
+
+#apply(min_dist,2,mean)
+#min_dist2[1:10,]
+#(min_dist2)[1:10,1:10]
+```
+Note, that the similarity measures in Figure \@ref(fig:figcos) are computed for each company-year enabling dynamic analysis of the underlying SDG related content and the associated progress in company sustainability actions evolution over time.
+
+For a static analysis, we can use the *average* the cosine similarities over the all available report years and construct a similarity-based rating of the considered firms with respect to each of the SDGs. The associated similarity-based rating is presented in Table \@ref(tab:tab02).
+
+
+```{r tab02, fig.pos="H"}
+names_list<-sapply(rownames(min_dist2),function(x){strsplit(x, split="_")[[1]]})[1,]
+aggt<-aggregate(min_dist2, mean,by=list(names_list))
+#rating_cos<-data.frame(Goal=colnames(aggt[,-1]), Rating = NA)
+rating_cos<-data.frame(Goal=paste0("G",1:17), Rating = NA)
+
+
+for(i in 1:nrow(rating_cos)){
+  rating_cos$Rating[i] = paste(aggt[order(aggt[,i+1], decreasing = T),1], collapse=", ")
+}
+caption<-"Company similarity-based rating (from the most similar to the least similar) with respect to the individual SDGs using the obtained topic embeddings pooled over all available report years."
+
+ knitr::kable(rating_cos, align = "lll",
+               col.names = colnames(rating_cos),
+               row.names = F,
+               digits = 5,
+               caption = caption
+  )%>%kableExtra::kable_styling(latex_options = "HOLD_position")
+```
+
+
+In our framework, we are not restricted to associating the reports to the individual SDGs only. We are also able to consider any linear combinations of the goals composed based on personal preferences, such that, in a sense, a personalized sustainability goal for a tailored sustainability assessment can be easily created. In order to considering individual preferences, let us define a linear combination of the goals using weights $\beta=(\beta_1,\ldots,\beta_{17})^\top$. Then $C\beta\approx UQ^\top\beta$ defines a "personalized" goal based  on the term occurrences approximated by the co-factorization. Using the following four different combinations (portfolios) of SDGs, we provide an example of such tailored sustainability assessment. 
+
+Our example portfolios are:
+
+- "all_equal" (all goals are equally weighted),
+- "basic_needs" (the goals addressing the basic human needs (SDGs 1-6) are equally weighted and all other goals have zero weights), 
+- "fair_society" (the goals concerning society and infrastructure developement (SDGs 7-12 and 16-17) are equaly weighted and all other goals have zero weights),
+- "climate_life" (the goals addressing climate, plant and animal life (SDGs 13-15) are equally weighted and all other goals have zero weights).
+
+```{r tab03}
+year = 2020
+years = unique(sapply(colnames(Vs), function(x){substr(x,nchar(x)-3, nchar(x))}))
+wws<-cbind(rep(1,17),c(rep(1,6),rep(0,11)), c(rep(0,6),rep(1,6),rep(0,3),rep(1,2)), c(rep(0,12),rep(1,3),rep(0,2)))
+colnames(wws)<-c("all_equal","basic_needs","fair_society","climate_life")
+myrating<-character(ncol(wws))
+
+for (w in 1:ncol(wws)){
+  weights<-wws[,w]
+  weights<-weights/sum(weights)
+  b<-matrix(weights,,1)
+  mygoal<-t(U)%*%Q%*%b
+  
+  ##score
+  myscore<-Q%*%b
+  
+  #most informative
+  myscore0<-myscore
+  my_comps<-which.max(myscore0)
+  myscore0[my_comps]<-0
+  my_comps<-c(my_comps,which.max(myscore0))
+  
+  ##compute the distances
+  mydist<-compute_col_dist(V,myscore)
+  min_dist<-aggregate(mydist,by=list(names(mydist)), min)
+  mynames<-min_dist[,1]
+  min_dist<-min_dist[,-1]; names(min_dist)<-mynames
+  
+  if(year%in%years){
+   min_disty<-min_dist[grepl(year,names(min_dist))]
+  } else {
+    min_disty<-aggregate(as.matrix(min_dist_norm), by=list(firms),mean)
+    mynames<-min_disty[,1]
+    min_disty<-min_disty[,-1]; names(min_disty)<-mynames
+  }
+  ##rating
+  myrating[w]<-paste(sapply(names(min_disty),function(x){strsplit(x,"_")[[1]][1]})[order(min_disty)], collapse=", ")
+}
+
+myrating<-data.frame(goal=colnames(wws),rating=myrating)
+caption<-paste("Company similarity-based rating (from the most similar to the least similar) with respect to the individual SDGs using the obtained topic embeddings for the reports in year", year,".")
+
+ knitr::kable(myrating, align = "lll",
+               col.names = colnames(myrating),
+               row.names = F,
+               digits = 5,
+               caption = caption
+  )
+
+```
+
+
+In Table \@ref(tab:tab03), the resulting firm rating based on each SDG portfolio is presented. As shown, the ratings can be quite different depending on the concrete preferences. In general, any linear combination of the goals can build a basis for such a comparison. This makes the proposed procedure very flexible. Moreover, any user defined (dis)similarity metric can be applied to the resulting embeddings in the topic space, which grant additional flexibility to our method.
+
+In summary, as shown in the above analysis, the proposed matrix co-factorization for sustainability assessment with respect to the predefined structure of the 17 SDGs, is a transparent and flexible approach resulting in a low dimensional topic representation facilitating adaptive association of the sustainability related reports with the SDGs.
+
+
+# Conclusion and Discussion
+
+<!--As shown in @aureli2020, sustainability-related disclosures have a significant impact on company value. The contained information influences investor reactions and subsequent pricing, highlighting the increasing importance of incorporating this textual information into sustainability analysis. To ensure both objectivity and flexibility in the analysis, we propose a simple approach that enables us to represent the textual content of the reports in a topic space using the 17 SDGs as a predefined structure.-->
+
+In the present paper, we propose a transparent approach that enables us to represent the textual content of sustainanbility reports in a topic space using the 17 SDGs as a predefined structure. The proposed methodology builds upon non-negative matrix co-factorization for topic extraction with side information, resulting in a low-dimensional representation in a prestructured topic space. The method is scalable, simple to implement, computationally efficient, and does not require any manual intervention as other comparable methods do. It delivers transparent and interpretable results with many use cases.
+
+The adopted matrix co-factorization jointly factorizes two term-context matrices: the first one contains the term-context counts for the corpus of sustainability-related reports, and the second one contains the term-context counts for the SDG texts, representing the predefined structure or the side information. The associated algorithm, based on hierarchical NMF, requires the input of two nuisance parameter values. The first nuisance parameter, $\lambda$, governs the importance of the side information in the co-factorization procedure. The second nuisance parameter, $K$, specifies the number of latent topics and thus the resulting dimension of the latent topic space. We test multiple weighting schemes for the term-context representations and provide a data-driven procedure for choosing the values of the nuisance parameters by maximizing the common goodness-of-fit measure for unsupervised topic extraction: the average topic coherence.
+
+Using average topic coherence as the goodness-of-fit criterion, we compare our proposed method to a comparable competing technique - keyword seeded topic model from @eshima2023. The results show that our model outperforms the competitor in terms of the average topic coherence and represents a computationally simpler method to achieve directed topic extraction. 
+
+Our results in form of directed contextual topic embeddings provide a basis for dynamic comparison of the sustainability-related reports for eight listed tech firms. We associate the reports with the SDGs using maximum cosine similarity and show that our procedure can efficiently assist financial decisions under tailored SDG-based preferences.
+
+Nevertheless, an important premise of our analysis is that the reports' texts contain objective information on firms' sustainability actions, which may not hold in general. @laskin2022 discuss the issue of the credibility of sustainability reports and point out a bias towards optimistic language. Moreover, we do not take into consideration the sentiment associated with the report content (positive or negative tone), which is an important aspect of sustainability assessment (@MUCKO2021). Incorporating these issues into the analysis is a promising subject for future research.
+
+
+
+# References {-}
+
+```{r}
+tinytex::parse_packages("./MDPI_template/paperDTSA.log")
+```
+
